@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in the SDK is broken or behaving unexpectedly.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in as much
+        of the form as you can - the more we know, the faster we can fix.
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      description: Output of `pnpm list @outcome.xyz/hip4` (or your package manager equivalent).
+      placeholder: 1.0.0-beta
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runtime
+      options:
+        - Node 18
+        - Node 20
+        - Node 22
+        - Bun
+        - Deno
+        - Browser
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what did you observe?
+      placeholder: I called `adapter.trading.placeOrder(...)` and got ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A snippet, gist, or repo. Please redact any private keys.
+      render: typescript
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or stack trace
+      description: Paste any relevant output. Wrap in triple backticks.
+      render: shell

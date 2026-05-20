@@ -1,0 +1,83 @@
+{
+  "name": "@outcome.xyz/hip4",
+  "version": "1.0.0-beta",
+  "description": "TypeScript SDK for Hyperliquid HIP-4",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Outcome-xyz/hip4.git"
+  },
+  "homepage": "https://github.com/Outcome-xyz/hip4",
+  "bugs": {
+    "url": "https://github.com/Outcome-xyz/hip4/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/types.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.cts",
+        "default": "./dist/types.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "hyperliquid",
+    "hip4",
+    "hip-4",
+    "financial-markets",
+    "primitives",
+    "composables",
+    "structured-products",
+    "binary-outcomes",
+    "eip712",
+    "sdk",
+    "typescript",
+    "web3"
+  ],
+  "author": "Dennis Furrer",
+  "license": "BUSL-1.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
+    "decimal.js": "10.6.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.0"
+  }
+}

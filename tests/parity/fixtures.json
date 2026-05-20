@@ -1,0 +1,374 @@
+{
+  "generatedBy": "@outcome.xyz/hip4 internal signing helpers",
+  "sdkVersion": "1.8.8",
+  "fixtures": [
+    {
+      "description": "simple-limit-order",
+      "rawAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000010,
+            "b": true,
+            "p": "0.5",
+            "s": "20",
+            "r": false,
+            "t": {
+              "limit": {
+                "tif": "Gtc"
+              }
+            }
+          }
+        ],
+        "grouping": "na"
+      },
+      "nonce": 1234567890123,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000010,
+            "b": true,
+            "p": "0.5",
+            "s": "20",
+            "r": false,
+            "t": {
+              "limit": {
+                "tif": "Gtc"
+              }
+            }
+          }
+        ],
+        "grouping": "na"
+      },
+      "msgpackHex": "83a474797065a56f72646572a66f72646572739186a161ce05f5e10aa162c3a170a3302e35a173a23230a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+      "actionHashHex": "e8397d1fea62460554be90941b1c19bf49fd8fedf00fc8953da000d5524c377c"
+    },
+    {
+      "description": "order-with-builder",
+      "rawAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000010,
+            "b": false,
+            "p": "0.65000",
+            "s": "100.00",
+            "r": false,
+            "t": {
+              "limit": {
+                "tif": "Ioc"
+              }
+            }
+          }
+        ],
+        "grouping": "na",
+        "builder": {
+          "b": "0xABCDEF1234567890ABCDEF1234567890ABCDEF12",
+          "f": 100
+        }
+      },
+      "nonce": 999,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000010,
+            "b": false,
+            "p": "0.65",
+            "s": "100",
+            "r": false,
+            "t": {
+              "limit": {
+                "tif": "Ioc"
+              }
+            }
+          }
+        ],
+        "grouping": "na",
+        "builder": {
+          "b": "0xabcdef1234567890abcdef1234567890abcdef12",
+          "f": 100
+        }
+      },
+      "msgpackHex": "84a474797065a56f72646572a66f72646572739186a161ce05f5e10aa162c2a170a4302e3635a173a3313030a172c2a17481a56c696d697481a3746966a3496f63a867726f7570696e67a26e61a76275696c64657282a162d92a307861626364656631323334353637383930616263646566313233343536373839306162636465663132a16664",
+      "actionHashHex": "bad8a92dcf341c045fa2c410cba35833122773d291b7c07566f0474bd8c2c46e"
+    },
+    {
+      "description": "trigger-order-with-cloid",
+      "rawAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000020,
+            "b": true,
+            "p": "0",
+            "s": "10",
+            "r": true,
+            "t": {
+              "trigger": {
+                "isMarket": true,
+                "triggerPx": "0.50000",
+                "tpsl": "tp"
+              }
+            },
+            "c": "0x000000000000000000000000000000aa"
+          }
+        ],
+        "grouping": "na"
+      },
+      "nonce": 1,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "order",
+        "orders": [
+          {
+            "a": 100000020,
+            "b": true,
+            "p": "0",
+            "s": "10",
+            "r": true,
+            "t": {
+              "trigger": {
+                "isMarket": true,
+                "triggerPx": "0.5",
+                "tpsl": "tp"
+              }
+            },
+            "c": "0x000000000000000000000000000000aa"
+          }
+        ],
+        "grouping": "na"
+      },
+      "msgpackHex": "83a474797065a56f72646572a66f72646572739187a161ce05f5e114a162c3a170a130a173a23130a172c3a17481a77472696767657283a869734d61726b6574c3a9747269676765725078a3302e35a47470736ca27470a163d92230783030303030303030303030303030303030303030303030303030303030306161a867726f7570696e67a26e61",
+      "actionHashHex": "8682c7181ab9cb5212611bd17e71e9090066312f853803a4aa8c9dfa3cb3e486"
+    },
+    {
+      "description": "cancel-single",
+      "rawAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 100000001,
+            "o": 12345
+          }
+        ]
+      },
+      "nonce": 42,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 100000001,
+            "o": 12345
+          }
+        ]
+      },
+      "msgpackHex": "82a474797065a663616e63656ca763616e63656c739182a161ce05f5e101a16fcd3039",
+      "actionHashHex": "7d26a23d65b5892befdf57f3502653398fc7afd2595d8acf111a5eb8c7e54643"
+    },
+    {
+      "description": "cancel-multi",
+      "rawAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 100000001,
+            "o": 1
+          },
+          {
+            "a": 100000002,
+            "o": 2
+          },
+          {
+            "a": 100000003,
+            "o": 3
+          }
+        ]
+      },
+      "nonce": 7,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 100000001,
+            "o": 1
+          },
+          {
+            "a": 100000002,
+            "o": 2
+          },
+          {
+            "a": 100000003,
+            "o": 3
+          }
+        ]
+      },
+      "msgpackHex": "82a474797065a663616e63656ca763616e63656c739382a161ce05f5e101a16f0182a161ce05f5e102a16f0282a161ce05f5e103a16f03",
+      "actionHashHex": "b66dd4cc1e9bed8e982ff7b70a43f3e08d4940ba4dc1557f627c5e9a92baf491"
+    },
+    {
+      "description": "modify",
+      "rawAction": {
+        "type": "modify",
+        "oid": 99999,
+        "order": {
+          "a": 100000010,
+          "b": true,
+          "p": "0.50000",
+          "s": "10",
+          "r": false,
+          "t": {
+            "limit": {
+              "tif": "Gtc"
+            }
+          }
+        }
+      },
+      "nonce": 1,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "modify",
+        "oid": 99999,
+        "order": {
+          "a": 100000010,
+          "b": true,
+          "p": "0.5",
+          "s": "10",
+          "r": false,
+          "t": {
+            "limit": {
+              "tif": "Gtc"
+            }
+          }
+        }
+      },
+      "msgpackHex": "83a474797065a66d6f64696679a36f6964ce0001869fa56f7264657286a161ce05f5e10aa162c3a170a3302e35a173a23130a172c2a17481a56c696d697481a3746966a3477463",
+      "actionHashHex": "8b807a2073f9511614398d36fcd422820df35f7026bcc99bff3b7a6db8ebf8b1"
+    },
+    {
+      "description": "cancel-with-vault",
+      "rawAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 1,
+            "o": 1
+          }
+        ]
+      },
+      "nonce": 100,
+      "vaultAddress": "0x1111111111111111111111111111111111111111",
+      "sortedAction": {
+        "type": "cancel",
+        "cancels": [
+          {
+            "a": 1,
+            "o": 1
+          }
+        ]
+      },
+      "msgpackHex": "82a474797065a663616e63656ca763616e63656c739182a16101a16f01",
+      "actionHashHex": "708537c4dff5d879af8619847ea6043149ee5c7130fc711b71a8a71321e8d6ce"
+    },
+    {
+      "description": "split-outcome",
+      "rawAction": {
+        "type": "userOutcome",
+        "splitOutcome": {
+          "outcome": 5,
+          "amount": "12.500"
+        }
+      },
+      "nonce": 50,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "userOutcome",
+        "splitOutcome": {
+          "outcome": 5,
+          "amount": "12.5"
+        }
+      },
+      "msgpackHex": "82a474797065ab757365724f7574636f6d65ac73706c69744f7574636f6d6582a76f7574636f6d6505a6616d6f756e74a431322e35",
+      "actionHashHex": "8cffdaf349a32282db4ad5ada831b65df4c0a1ed8c002ef7e1d998edbd14f0f3"
+    },
+    {
+      "description": "merge-outcome-max",
+      "rawAction": {
+        "type": "userOutcome",
+        "mergeOutcome": {
+          "outcome": 5,
+          "amount": null
+        }
+      },
+      "nonce": 51,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "userOutcome",
+        "mergeOutcome": {
+          "outcome": 5,
+          "amount": null
+        }
+      },
+      "msgpackHex": "82a474797065ab757365724f7574636f6d65ac6d657267654f7574636f6d6582a76f7574636f6d6505a6616d6f756e74c0",
+      "actionHashHex": "0ab972998d4a3b8979b60b549f6e9b97a42c90694200d5fcb61a69baa2736e1c"
+    },
+    {
+      "description": "negate-outcome",
+      "rawAction": {
+        "type": "userOutcome",
+        "negateOutcome": {
+          "question": 1,
+          "outcome": 5,
+          "amount": "10.00"
+        }
+      },
+      "nonce": 52,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "userOutcome",
+        "negateOutcome": {
+          "question": 1,
+          "outcome": 5,
+          "amount": "10"
+        }
+      },
+      "msgpackHex": "82a474797065ab757365724f7574636f6d65ad6e65676174654f7574636f6d6583a87175657374696f6e01a76f7574636f6d6505a6616d6f756e74a23130",
+      "actionHashHex": "7b47e5e39dd8be1eb87d2018c9a327aeadabb789cd57c3474d5a138841997137"
+    },
+    {
+      "description": "schedule-cancel",
+      "rawAction": {
+        "type": "scheduleCancel",
+        "time": 1700000000000
+      },
+      "nonce": 60,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "scheduleCancel",
+        "time": 1700000000000
+      },
+      "msgpackHex": "82a474797065ae7363686564756c6543616e63656ca474696d65cf0000018bcfe56800",
+      "actionHashHex": "4eaf53a769d4d6c9af58bcfa0a7b382849908efa9a245514dc68401b5c505af7"
+    },
+    {
+      "description": "schedule-cancel-clear",
+      "rawAction": {
+        "type": "scheduleCancel",
+        "time": null
+      },
+      "nonce": 61,
+      "vaultAddress": null,
+      "sortedAction": {
+        "type": "scheduleCancel",
+        "time": null
+      },
+      "msgpackHex": "82a474797065ae7363686564756c6543616e63656ca474696d65c0",
+      "actionHashHex": "67fa8f828a755d9e7d843b0de533400165e63e489ba2e75b2cb2269d187c4a99"
+    }
+  ]
+}

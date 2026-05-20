@@ -1,0 +1,34 @@
+name: Feature request
+description: Propose a new capability or improvement.
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the user-facing problem, not the implementation.
+      placeholder: When I try to ..., I have to ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: A rough sketch of how the SDK should expose this.
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds, related libraries, or shapes you rejected.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: I'm willing to open a PR for this.
+        - label: This requires changes to the React bindings (`@outcome.xyz/hip4-react`).
+        - label: This requires upstream Hyperliquid changes.

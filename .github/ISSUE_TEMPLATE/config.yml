@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Outcome-xyz/hip4/security/policy
+    about: Please do not open public issues for security reports. See SECURITY.md.
+  - name: Hyperliquid HIP-4 protocol questions
+    url: https://hyperliquid.gitbook.io/hyperliquid-docs
+    about: Questions about the underlying protocol belong upstream.
