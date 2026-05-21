@@ -251,7 +251,29 @@ describe("fetchSettledOutcome", () => {
 
     const client = new HIP4Client();
     const result = await client.fetchSettledOutcome(516);
-    expect(result).toEqual(settled);
+    expect(result).toEqual({
+      ...settled,
+      spec: { ...settled.spec, quoteToken: "USDH" },
+    });
+  });
+
+  it("preserves an explicit quoteToken returned by the API", async () => {
+    const settled = {
+      spec: {
+        outcome: 516,
+        name: "Test",
+        description: "desc",
+        sideSpecs: [],
+        quoteToken: "USDC",
+      },
+      settleFraction: "1.0",
+      details: "settled yes",
+    };
+    vi.stubGlobal("fetch", mockFetchOk(settled));
+
+    const client = new HIP4Client();
+    const result = await client.fetchSettledOutcome(516);
+    expect(result?.spec.quoteToken).toBe("USDC");
   });
 
   it("returns null when API returns null body", async () => {

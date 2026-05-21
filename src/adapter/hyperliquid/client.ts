@@ -161,6 +161,29 @@ export function isOutcomeCoin(coin: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// quoteToken normalization
+//
+// Testnet started returning `quoteToken` on outcomeMeta in May 2026; mainnet
+// does not yet include the field. We default missing values to "USDH" so
+// `HLOutcome.quoteToken` can be treated as always-set downstream of the
+// client. Drop this default once mainnet returns the field for all outcomes.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_QUOTE_TOKEN = "USDH";
+
+function withQuoteTokenDefault<T extends { quoteToken?: string }>(value: T): T {
+  // Spread `value` second so an explicit quoteToken from the API wins.
+  return { quoteToken: DEFAULT_QUOTE_TOKEN, ...value };
+}
+
+function normalizeOutcomeMeta(raw: HLOutcomeMeta): HLOutcomeMeta {
+  return {
+    ...raw,
+    outcomes: raw.outcomes.map(withQuoteTokenDefault),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // HIP4Client
 // ---------------------------------------------------------------------------
 
@@ -189,14 +212,17 @@ export class HIP4Client {
   // -- Info endpoints -------------------------------------------------------
 
   async fetchOutcomeMeta(): Promise<HLOutcomeMeta> {
-    return this.infoPost<HLOutcomeMeta>({ type: "outcomeMeta" });
+    const raw = await this.infoPost<HLOutcomeMeta>({ type: "outcomeMeta" });
+    return normalizeOutcomeMeta(raw);
   }
 
   async fetchSettledOutcome(outcome: number): Promise<HLSettledOutcome | null> {
-    return this.infoPost<HLSettledOutcome | null>({
+    const raw = await this.infoPost<HLSettledOutcome | null>({
       type: "settledOutcome",
       outcome,
     });
+    if (raw === null) return null;
+    return { ...raw, spec: withQuoteTokenDefault(raw.spec) };
   }
 
   async fetchL2Book(coin: string): Promise<HLL2Book> {
