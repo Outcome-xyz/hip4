@@ -14,6 +14,8 @@ export interface HLOutcome {
   name: string;
   description: string;
   sideSpecs: HLSideSpec[];
+  /** Quote token symbol. Optional on the wire; SDK fetch helpers default to "USDH" when absent. */
+  quoteToken?: string;
 }
 
 export interface HLSideSpec {
@@ -517,6 +519,8 @@ export interface HLWsOutcomeSpec {
   name: string;
   description: string;
   sideSpecs: [HLWsOutcomeMetaSideSpec, HLWsOutcomeMetaSideSpec];
+  /** Quote token symbol; mirrors HLOutcome.quoteToken. */
+  quoteToken?: string;
 }
 
 export interface HLWsQuestionSpec {

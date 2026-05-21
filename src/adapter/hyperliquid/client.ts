@@ -161,6 +161,26 @@ export function isOutcomeCoin(coin: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// quoteToken normalization
+// ---------------------------------------------------------------------------
+
+const DEFAULT_QUOTE_TOKEN = "USDH";
+
+/** Default missing `quoteToken` to "USDH"; preserve an explicit value. @internal */
+export function withQuoteTokenDefault<T extends { quoteToken?: string }>(
+  value: T,
+): T {
+  return { quoteToken: DEFAULT_QUOTE_TOKEN, ...value };
+}
+
+function normalizeOutcomeMeta(raw: HLOutcomeMeta): HLOutcomeMeta {
+  return {
+    ...raw,
+    outcomes: raw.outcomes.map(withQuoteTokenDefault),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // HIP4Client
 // ---------------------------------------------------------------------------
 
@@ -189,14 +209,17 @@ export class HIP4Client {
   // -- Info endpoints -------------------------------------------------------
 
   async fetchOutcomeMeta(): Promise<HLOutcomeMeta> {
-    return this.infoPost<HLOutcomeMeta>({ type: "outcomeMeta" });
+    const raw = await this.infoPost<HLOutcomeMeta>({ type: "outcomeMeta" });
+    return normalizeOutcomeMeta(raw);
   }
 
   async fetchSettledOutcome(outcome: number): Promise<HLSettledOutcome | null> {
-    return this.infoPost<HLSettledOutcome | null>({
+    const raw = await this.infoPost<HLSettledOutcome | null>({
       type: "settledOutcome",
       outcome,
     });
+    if (raw === null) return null;
+    return { ...raw, spec: withQuoteTokenDefault(raw.spec) };
   }
 
   async fetchL2Book(coin: string): Promise<HLL2Book> {

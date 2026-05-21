@@ -23,7 +23,7 @@ import type {
 } from "../../types/hip4-market";
 import type { PredictionEventAdapter, Unsubscribe } from "../types";
 import type { HIP4Client } from "./client";
-import { sideCoin } from "./client";
+import { sideCoin, withQuoteTokenDefault } from "./client";
 import { classifyAllOutcomes } from "./market-classification";
 import type {
   HLOutcome,
@@ -219,8 +219,12 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
         if (!Array.isArray(raw)) return;
         const updates = raw as HLWsOutcomeMetaUpdates;
         for (const update of updates) {
-          this.applyMetaUpdate(update);
-          onData(update);
+          const normalized: HLWsOutcomeMetaUpdate =
+            "outcomeCreated" in update
+              ? { outcomeCreated: withQuoteTokenDefault(update.outcomeCreated) }
+              : update;
+          this.applyMetaUpdate(normalized);
+          onData(normalized);
         }
       },
     );
