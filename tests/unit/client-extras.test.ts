@@ -227,7 +227,7 @@ describe("isOutcomeCoin with + prefix", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fetchOutcomeMeta — quoteToken normalization
+// fetchOutcomeMeta
 // ---------------------------------------------------------------------------
 
 describe("fetchOutcomeMeta", () => {

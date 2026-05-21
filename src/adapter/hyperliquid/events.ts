@@ -219,9 +219,6 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
         if (!Array.isArray(raw)) return;
         const updates = raw as HLWsOutcomeMetaUpdates;
         for (const update of updates) {
-          // Mirror REST normalization: default missing quoteToken to "USDH"
-          // before the consumer sees the event. Keeps REST/WS callers in
-          // parity so cache rebuilds from WS frames don't lose the field.
           const normalized: HLWsOutcomeMetaUpdate =
             "outcomeCreated" in update
               ? { outcomeCreated: withQuoteTokenDefault(update.outcomeCreated) }

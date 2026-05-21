@@ -14,20 +14,7 @@ export interface HLOutcome {
   name: string;
   description: string;
   sideSpecs: HLSideSpec[];
-  /**
-   * Quote token symbol (e.g. "USDH", "USDC"). Testnet started returning this
-   * field on outcomeMeta responses in May 2026; mainnet does not yet include
-   * it, so the field is optional at the wire level.
-   *
-   * For consumers going through `fetchOutcomeMeta` / `fetchSettledOutcome`,
-   * the SDK normalizes missing values to "USDH" — so post-fetch you can
-   * treat this as always set. Tighten to required once mainnet also returns
-   * the field.
-   *
-   * Note the serialization difference from L1 vote actions, where the
-   * equivalent field is a numeric token *index* (e.g. `0` for USDC, `360`
-   * mainnet / `1452` testnet for USDH). Here it is the token symbol.
-   */
+  /** Quote token symbol. Optional on the wire; SDK fetch helpers default to "USDH" when absent. */
   quoteToken?: string;
 }
 
@@ -532,12 +519,7 @@ export interface HLWsOutcomeSpec {
   name: string;
   description: string;
   sideSpecs: [HLWsOutcomeMetaSideSpec, HLWsOutcomeMetaSideSpec];
-  /**
-   * Quote token symbol. Mirrors {@link HLOutcome.quoteToken} on the REST
-   * `outcomeMeta` endpoint — optional at the wire level (testnet returns it,
-   * mainnet does not), defaulted to "USDH" by `subscribeOutcomeMetaUpdates`
-   * before reaching the consumer callback.
-   */
+  /** Quote token symbol; mirrors HLOutcome.quoteToken. */
   quoteToken?: string;
 }
 
