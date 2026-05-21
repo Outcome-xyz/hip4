@@ -532,6 +532,13 @@ export interface HLWsOutcomeSpec {
   name: string;
   description: string;
   sideSpecs: [HLWsOutcomeMetaSideSpec, HLWsOutcomeMetaSideSpec];
+  /**
+   * Quote token symbol. Mirrors {@link HLOutcome.quoteToken} on the REST
+   * `outcomeMeta` endpoint — optional at the wire level (testnet returns it,
+   * mainnet does not), defaulted to "USDH" by `subscribeOutcomeMetaUpdates`
+   * before reaching the consumer callback.
+   */
+  quoteToken?: string;
 }
 
 export interface HLWsQuestionSpec {

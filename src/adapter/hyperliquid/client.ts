@@ -171,7 +171,15 @@ export function isOutcomeCoin(coin: string): boolean {
 
 const DEFAULT_QUOTE_TOKEN = "USDH";
 
-function withQuoteTokenDefault<T extends { quoteToken?: string }>(value: T): T {
+/**
+ * Fills in `quoteToken: "USDH"` if absent; preserves an explicit value.
+ * @internal — used by the REST fetch boundary and the WS update handler to
+ * give SDK consumers a uniform `quoteToken` post-normalization. Not exported
+ * from the package index.
+ */
+export function withQuoteTokenDefault<T extends { quoteToken?: string }>(
+  value: T,
+): T {
   // Spread `value` second so an explicit quoteToken from the API wins.
   return { quoteToken: DEFAULT_QUOTE_TOKEN, ...value };
 }

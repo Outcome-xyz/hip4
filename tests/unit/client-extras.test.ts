@@ -227,6 +227,52 @@ describe("isOutcomeCoin with + prefix", () => {
 });
 
 // ---------------------------------------------------------------------------
+// fetchOutcomeMeta — quoteToken normalization
+// ---------------------------------------------------------------------------
+
+describe("fetchOutcomeMeta", () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("defaults missing quoteToken on each outcome to USDH (mainnet shape)", async () => {
+    const raw = {
+      outcomes: [
+        { outcome: 1, name: "A", description: "", sideSpecs: [{ name: "Y" }, { name: "N" }] },
+        { outcome: 2, name: "B", description: "", sideSpecs: [{ name: "Y" }, { name: "N" }] },
+      ],
+      questions: [],
+    };
+    vi.stubGlobal("fetch", mockFetchOk(raw));
+
+    const client = new HIP4Client();
+    const result = await client.fetchOutcomeMeta();
+    expect(result.outcomes.map((o) => o.quoteToken)).toEqual(["USDH", "USDH"]);
+  });
+
+  it("preserves explicit quoteToken values from the API (testnet shape)", async () => {
+    const raw = {
+      outcomes: [
+        { outcome: 1, name: "A", description: "", sideSpecs: [{ name: "Y" }, { name: "N" }], quoteToken: "USDH" },
+        { outcome: 2, name: "B", description: "", sideSpecs: [{ name: "Y" }, { name: "N" }], quoteToken: "USDC" },
+      ],
+      questions: [],
+    };
+    vi.stubGlobal("fetch", mockFetchOk(raw));
+
+    const client = new HIP4Client();
+    const result = await client.fetchOutcomeMeta();
+    expect(result.outcomes.map((o) => o.quoteToken)).toEqual(["USDH", "USDC"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fetchSettledOutcome
 // ---------------------------------------------------------------------------
 
