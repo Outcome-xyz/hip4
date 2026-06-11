@@ -5,6 +5,21 @@ All notable changes to `@outcome.xyz/hip4` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1-beta] - 2026-06-11
+
+### Added
+
+- `liquidityRewards` module - season-scoped liquidity-reward checks
+  (`liquidityRewards.season("s1")` for the World Cup 2026 campaign):
+  - `checkEligibility({ subject })` - eligible team/match markets.
+  - `checkRewards({ wallet, date })` - per-wallet reward scores.
+  - `LIQUIDITY_REWARDS_CONFIG` - in-code endpoint and season mappings.
+  - `LiquidityRewardsError` and typed results exported from the root
+    entry point.
+- Example: `examples/wc-liq-rewards-s1-get-markets.ts`.
+- Docs: `docs/LIQUIDITY-REWARDS.md` and a README section on liquidity
+  rewards.
+
 ## [1.0.0-beta] - 2026-05-20
 
 Initial public beta release.
@@ -29,4 +44,5 @@ Initial public beta release.
 - Node 18+ required.
 - React bindings live in a separate package (`@outcome.xyz/hip4-react`).
 
+[1.0.1-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.1-beta
 [1.0.0-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.0-beta

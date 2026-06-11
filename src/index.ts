@@ -141,6 +141,30 @@ export {
   type SpotMetaShape,
 } from "./adapter";
 
+/* Liquidity rewards (season-scoped eligibility + rewards checks) */
+export type {
+  CheckEligibilityParams,
+  CheckRewardsParams,
+  EligibilitySubject,
+  LiquidityRewardsChampionMarket,
+  LiquidityRewardsEpochStatus,
+  LiquidityRewardsMatchMarket,
+  LiquidityRewardsMid,
+  LiquidityRewardsScore,
+  LiquidityRewardsScoredOutcome,
+  LiquidityRewardsSeasonHandle,
+  LiquidityRewardsSeasonId,
+  LiquidityRewardsSnapshot,
+  MatchesEligibility,
+  RewardsCheckResult,
+  TeamsEligibility,
+} from "./liquidity-rewards";
+export {
+  LIQUIDITY_REWARDS_CONFIG,
+  liquidityRewards,
+  LiquidityRewardsError,
+} from "./liquidity-rewards";
+
 /* Streams */
 export type { PriceFeedCandle } from "./streams/candle-utils";
 export {
