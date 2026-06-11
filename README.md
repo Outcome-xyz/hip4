@@ -33,6 +33,7 @@ await hip4.initialize();
 
 - [`auth-eoa.ts`](examples/auth-eoa.ts) - Agent key approval and auth setup
 - [`get-all-markets.ts`](examples/get-all-markets.ts) - Fetch all markets grouped by type
+- [`wc-liq-rewards-s1-get-markets.ts`](examples/wc-liq-rewards-s1-get-markets.ts) - Liquidity-reward eligibility and wallet scores for season 1 (World Cup 2026)
 - [`get-multi-outcome.ts`](examples/get-multi-outcome.ts) - Multi-outcome markets with live prices
 - [`get-recurring-markets.ts`](examples/get-recurring-markets.ts) - Recurring markets with expiry countdowns
 - [`place-limit-order.ts`](examples/place-limit-order.ts) - Limit order with price validation
@@ -170,6 +171,24 @@ unsub();
 | `createPriceFeed(marketData, marketId, onSnapshot, opts?)` | Live mid + tick-aggregated candle history for a HIP-4 outcome side |
 | `createPerpPriceFeed(client, coin, onSnapshot, opts?)`     | Same shape for an HL perp coin                                     |
 | `processTick`, `candleBoundaryMs`, `intervalToMs`          | Lower-level candle utilities                                       |
+
+## Liquidity rewards
+
+Check which markets are eligible for liquidity rewards and what each wallet
+has earned, by season (`s1` = the World Cup 2026 campaign). Endpoints and
+season mappings are configured in code (`LIQUIDITY_REWARDS_CONFIG`).
+
+```typescript
+import { liquidityRewards } from "@outcome.xyz/hip4";
+
+const s1 = liquidityRewards.season("s1");
+
+const teams = await s1.checkEligibility({ subject: "teams" });
+const matches = await s1.checkEligibility({ subject: "matches" });
+const rewards = await s1.checkRewards({ wallet: "0x...", date: "2026-06-08" });
+```
+
+Reward mechanics: [World Cup Outcome Rewards](https://docs.monarch.fast/world-cup-outcome-rewards#reward-program-1-champion-market) · Upstream API: [World Cup API](https://docs.monarch.fast/world-cup-api)
 
 ## USDH on/off-ramp (mainnet)
 

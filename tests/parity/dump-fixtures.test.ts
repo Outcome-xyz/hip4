@@ -241,7 +241,7 @@ describe("dump signing fixtures", () => {
 
     const out = {
       generatedBy: "@outcome.xyz/hip4 internal signing helpers",
-      sdkVersion: "1.8.8",
+      sdkVersion: "1.0.1-beta",
       fixtures,
     };
 
