@@ -139,6 +139,8 @@ export {
   type CoreToEvmFeeBreakdown,
   type CoreToEvmFeeInputs,
   findHypeUsdcSpotPairCoin,
+  HYPE_USDC_SPOT_INDEX_MAINNET,
+  HYPE_USDC_SPOT_INDEX_TESTNET,
   HYPE_USDC_SPOT_PAIR_MAINNET,
   HYPE_USDC_SPOT_PAIR_TESTNET,
   selectHypeSpotMarkPx,

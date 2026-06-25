@@ -230,4 +230,12 @@ export interface PredictionWalletAdapter {
     destination: string;
     amount: string;
   }): Promise<WalletActionResult>;
+  /**
+   * Switch the master account's abstraction mode via the approved agent key.
+   * `"u"` = unifiedAccount, `"p"` = portfolioMargin, `"i"` = isolated.
+   * Requires `auth.initAuth()` to have run.
+   */
+  agentSetAbstraction(
+    abstraction: "u" | "p" | "i",
+  ): Promise<WalletActionResult>;
 }

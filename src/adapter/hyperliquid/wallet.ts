@@ -19,6 +19,10 @@ import {
   deriveCoreEvmSystemAddress,
   HYPE_CORE_EVM_SYSTEM_ADDRESS,
 } from "./core-evm-system-address";
+import {
+  HYPE_USDC_SPOT_INDEX_MAINNET,
+  HYPE_USDC_SPOT_INDEX_TESTNET,
+} from "./hype-spot-mark-px";
 import { formatPrice } from "./pricing";
 import {
   SEND_ASSET_TYPES,
@@ -252,7 +256,9 @@ export class HIP4WalletAdapter {
   }
 
   async sellHype(amount: string): Promise<WalletActionResult> {
-    const spotIndex = this.client.testnet ? 1035 : 107;
+    const spotIndex = this.client.testnet
+      ? HYPE_USDC_SPOT_INDEX_TESTNET
+      : HYPE_USDC_SPOT_INDEX_MAINNET;
     // HYPE szDecimals=2 — HL rejects sizes with more than 2 decimal places.
     const sz = Number(amount).toFixed(2);
     return this.executeSpotOrder(false, sz, spotIndex);
