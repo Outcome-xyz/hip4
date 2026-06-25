@@ -320,4 +320,168 @@ describe("HIP4WalletAdapter", () => {
       expect(parseFloat(action.orders[0].p)).toBeCloseTo(2.75, 4);
     });
   });
+
+  describe("sellHype (HYPE/USDC spot)", () => {
+    it("targets the testnet HYPE spot pair when client.testnet=true", async () => {
+      const client = mockClient(true);
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      await wallet.sellHype("1");
+
+      expect(client.fetchSpotAssetCtx).toHaveBeenCalledWith(1035);
+      const action = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(action.orders[0].a).toBe(11035);
+      expect(action.orders[0].b).toBe(false);
+    });
+
+    it("targets the mainnet HYPE spot pair when client.testnet=false", async () => {
+      const client = mockClient(false);
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      await wallet.sellHype("1");
+
+      expect(client.fetchSpotAssetCtx).toHaveBeenCalledWith(107);
+      const action = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(action.orders[0].a).toBe(10107);
+    });
+
+    it("floors size to 2 decimals (does not round up — would over-spend on a sell)", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      // 1.006 must NOT become "1.01" (rounding-up would exceed the caller's
+      // balance). Floor → "1.00", which the signing layer's formatDecimal
+      // canonicalizes to "1" by stripping trailing zeros.
+      await wallet.sellHype("1.006");
+      const action = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(action.orders[0].s).toBe("1");
+      expect(action.orders[0].s).not.toBe("1.01");
+    });
+
+    it("preserves exact-2-decimal input without float drift (0.29 stays 0.29)", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      // Math.floor(0.29 * 100) / 100 would yield 0.28 due to float repr;
+      // decimal.js ROUND_DOWN must return 0.29 exactly.
+      await wallet.sellHype("0.29");
+      const action = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(action.orders[0].s).toBe("0.29");
+    });
+
+    it("returns error when not authenticated", async () => {
+      const client = mockClient();
+      const auth = mockAuth(false);
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.sellHype("1");
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Not authenticated");
+    });
+
+    it("returns filledSz/avgPx/oid on success", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.sellHype("1");
+      expect(res.success).toBe(true);
+      expect(res.filledSz).toBe("10.0");
+      expect(res.avgPx).toBe("1.0");
+      expect(res.oid).toBe(123);
+    });
+
+    it("returns order error from exchange", async () => {
+      const client = mockClient();
+      (client.placeOrder as ReturnType<typeof vi.fn>).mockResolvedValue({
+        status: "ok",
+        response: { type: "order", data: { statuses: [{ error: "Insufficient balance" }] } },
+      });
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.sellHype("1");
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Insufficient balance");
+    });
+  });
+
+  describe("agentSetAbstraction", () => {
+    it("returns error when not authenticated", async () => {
+      const client = mockClient();
+      const auth = mockAuth(false);
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.agentSetAbstraction("u");
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Not authenticated");
+    });
+
+    it("submits agentSetAbstraction action with the requested mode", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      await wallet.agentSetAbstraction("u");
+
+      expect(client.submitUserSignedAction).toHaveBeenCalledOnce();
+      const action = (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(action.type).toBe("agentSetAbstraction");
+      expect(action.abstraction).toBe("u");
+    });
+
+    it("forwards each abstraction mode unchanged (u / p / i)", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      for (const mode of ["u", "p", "i"] as const) {
+        await wallet.agentSetAbstraction(mode);
+      }
+      const calls = (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls.map((c) => c[0].abstraction)).toEqual(["u", "p", "i"]);
+    });
+
+    it("returns success on ok response", async () => {
+      const client = mockClient();
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.agentSetAbstraction("u");
+      expect(res.success).toBe(true);
+      expect(res.error).toBeUndefined();
+    });
+
+    it("surfaces a string error response", async () => {
+      const client = mockClient();
+      (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mockResolvedValue({
+        status: "err",
+        response: "Agent not approved",
+      });
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.agentSetAbstraction("p");
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Agent not approved");
+    });
+
+    it("falls back to a default error message when response is not a string", async () => {
+      const client = mockClient();
+      (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mockResolvedValue({
+        status: "err",
+        response: { error: "ignored object" },
+      });
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.agentSetAbstraction("u");
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Failed to set abstraction");
+    });
+  });
 });

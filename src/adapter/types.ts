@@ -214,6 +214,8 @@ export interface PredictionWalletAdapter {
   buyUsdh(amount: string): Promise<WalletActionResult>;
   /** Sell USDH on the spot market. Uses L1 agent signing. */
   sellUsdh(amount: string): Promise<WalletActionResult>;
+  /** Sell HYPE on the spot market (HYPE/USDC pair). Uses L1 agent signing. */
+  sellHype(amount: string): Promise<WalletActionResult>;
   /** Transfer USDC from Perp to Spot account. */
   transferToSpot(amount: string): Promise<WalletActionResult>;
   /** Transfer USDC from Spot to Perp account. */
@@ -228,4 +230,12 @@ export interface PredictionWalletAdapter {
     destination: string;
     amount: string;
   }): Promise<WalletActionResult>;
+  /**
+   * Switch the master account's abstraction mode via the approved agent key.
+   * `"u"` = unifiedAccount, `"p"` = portfolioMargin, `"i"` = isolated.
+   * Requires `auth.initAuth()` to have run.
+   */
+  agentSetAbstraction(
+    abstraction: "u" | "p" | "i",
+  ): Promise<WalletActionResult>;
 }

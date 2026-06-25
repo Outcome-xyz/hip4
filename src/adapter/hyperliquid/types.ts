@@ -204,6 +204,34 @@ export interface HLWsUserFillsEvent {
   readonly fills: HLFill[];
 }
 
+// -- userNonFundingLedgerUpdates -------------------------------------------
+
+/**
+ * Ledger delta describing the on-chain side-effect of a non-funding event.
+ * `type` is left as `string` rather than a strict union so new HL delta
+ * kinds don't break consumers. Callers that narrow against a known set
+ * (deposit / withdraw / spotTransfer / ...) should cast at the boundary.
+ */
+export interface HLLedgerDelta {
+  type: string;
+  usdc?: string;
+  toPerp?: boolean;
+  fee?: string;
+  feeToken?: string;
+  nonce?: number;
+  user?: string;
+  destination?: string;
+  token?: string;
+  amount?: string;
+  usdcValue?: string;
+}
+
+export interface HLLedgerUpdate {
+  time: number;
+  hash: `0x${string}`;
+  delta: HLLedgerDelta;
+}
+
 // -- Exchange API (order placement) -----------------------------------------
 
 export interface HLOrderAction {
@@ -557,6 +585,18 @@ export interface HLWsClearinghouseStateEvent {
   dex: string;
   user: `0x${string}`;
   clearinghouseState: HLClearinghouseState;
+}
+
+// -- webData3 (unnamed agent slot) ------------------------------------------
+
+/**
+ * Narrow projection of HL's `webData3.userState` - only the fields needed to
+ * recognize the *unnamed* agent slot (HL's docs warn other fields are
+ * unstable / not part of the public contract).
+ */
+export interface HLWebData3 {
+  agentAddress: `0x${string}` | null;
+  agentValidUntil: number | null;
 }
 
 // -- extraAgents ------------------------------------------------------------

@@ -14,8 +14,12 @@
 
 import type { HLWsSpotAssetCtxItem } from "./types";
 
-export const HYPE_USDC_SPOT_PAIR_MAINNET = "@107" as const;
-export const HYPE_USDC_SPOT_PAIR_TESTNET = "@1035" as const;
+export const HYPE_USDC_SPOT_INDEX_MAINNET = 107 as const;
+export const HYPE_USDC_SPOT_INDEX_TESTNET = 1035 as const;
+export const HYPE_USDC_SPOT_PAIR_MAINNET =
+  `@${HYPE_USDC_SPOT_INDEX_MAINNET}` as const;
+export const HYPE_USDC_SPOT_PAIR_TESTNET =
+  `@${HYPE_USDC_SPOT_INDEX_TESTNET}` as const;
 
 export interface SelectHypeSpotMarkPxOptions {
   readonly testnet?: boolean;

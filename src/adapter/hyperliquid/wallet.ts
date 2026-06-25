@@ -12,13 +12,17 @@
 // ---------------------------------------------------------------------------
 
 import { applySlippage } from "../../lib/precision/financial";
-import { toDecimal } from "../../lib/precision/primitives";
+import { Decimal, toDecimal } from "../../lib/precision/primitives";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import {
   deriveCoreEvmSystemAddress,
   HYPE_CORE_EVM_SYSTEM_ADDRESS,
 } from "./core-evm-system-address";
+import {
+  HYPE_USDC_SPOT_INDEX_MAINNET,
+  HYPE_USDC_SPOT_INDEX_TESTNET,
+} from "./hype-spot-mark-px";
 import { formatPrice } from "./pricing";
 import {
   SEND_ASSET_TYPES,
@@ -251,6 +255,16 @@ export class HIP4WalletAdapter {
     return this.executeSpotOrder(false, amount);
   }
 
+  async sellHype(amount: string): Promise<WalletActionResult> {
+    const spotIndex = this.client.testnet
+      ? HYPE_USDC_SPOT_INDEX_TESTNET
+      : HYPE_USDC_SPOT_INDEX_MAINNET;
+    // HYPE szDecimals=2 — HL rejects sizes with more than 2 decimal places.
+    // Floor (not round) so we never exceed the caller's balance on a sell.
+    const sz = toDecimal(amount).toFixed(2, Decimal.ROUND_DOWN);
+    return this.executeSpotOrder(false, sz, spotIndex);
+  }
+
   async transferToSpot(amount: string): Promise<WalletActionResult> {
     return this.usdClassTransfer({ amount, toPerp: false });
   }
@@ -439,6 +453,7 @@ export class HIP4WalletAdapter {
   private async executeSpotOrder(
     isBuy: boolean,
     amount: string,
+    spotIndex?: number,
   ): Promise<WalletActionResult> {
     const agentSigner = this.auth.getSigner();
     if (!agentSigner) {
@@ -449,12 +464,14 @@ export class HIP4WalletAdapter {
     }
 
     try {
-      const spotIndex = this.client.testnet
-        ? USDH_SPOT_INDEX_TESTNET
-        : USDH_SPOT_INDEX_MAINNET;
-      const assetId = 10000 + spotIndex;
+      const resolvedSpotIndex =
+        spotIndex ??
+        (this.client.testnet
+          ? USDH_SPOT_INDEX_TESTNET
+          : USDH_SPOT_INDEX_MAINNET);
+      const assetId = 10000 + resolvedSpotIndex;
 
-      const ctx = await this.client.fetchSpotAssetCtx(spotIndex);
+      const ctx = await this.client.fetchSpotAssetCtx(resolvedSpotIndex);
       const oracle = ctx ? toDecimal(ctx.markPx) : null;
       if (!oracle || oracle.lte(0)) {
         return { success: false, error: "Could not fetch USDH oracle price" };
@@ -575,6 +592,52 @@ export class HIP4WalletAdapter {
         const obj = res.response as Record<string, unknown>;
         if (typeof obj.error === "string") errorMsg = obj.error;
       }
+      return { success: false, error: errorMsg };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return { success: false, error: message };
+    }
+  }
+
+  /**
+   * Switch the master account's abstraction mode via the approved agent key.
+   * "u" = unifiedAccount — merges spot and perps into a single balance.
+   * Only callable after the agent has been approved (auth.initAuth() done).
+   */
+  async agentSetAbstraction(
+    abstraction: "u" | "p" | "i",
+  ): Promise<WalletActionResult> {
+    const signer = this.auth.getSigner();
+    if (!signer) {
+      return {
+        success: false,
+        error: "Not authenticated. Call auth.initAuth() first.",
+      };
+    }
+
+    try {
+      const nonce = Date.now();
+      const action = { type: "agentSetAbstraction" as const, abstraction };
+
+      const signature = await signL1Action({
+        signer,
+        action,
+        nonce,
+        isTestnet: this.client.testnet,
+      });
+
+      const res = await this.client.submitUserSignedAction(
+        action as unknown as Record<string, unknown>,
+        nonce,
+        signature,
+      );
+
+      if (res.status === "ok") return { success: true };
+
+      const errorMsg =
+        typeof res.response === "string"
+          ? res.response
+          : "Failed to set abstraction";
       return { success: false, error: errorMsg };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
