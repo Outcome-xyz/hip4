@@ -97,6 +97,14 @@ export type RewardsCheckResult = EpochBase & {
    * normal "no scores yet", not an error.
    */
   scores: LiquidityRewardsScore[];
+  /**
+   * Total distinct participants for the epoch (every wallet that scored that
+   * day), from the upstream `participants_count`. Independent of the `wallet`
+   * filter, so it stays the full count even when `scores` is filtered to one
+   * wallet. Falls back to the distinct-wallet count of the returned scores when
+   * the upstream field is absent.
+   */
+  participantsCount: number;
 };
 
 /** Season-scoped handle returned by `liquidityRewards.season(id)`. */
@@ -195,11 +203,21 @@ export function season(
       params,
     );
     let scores = (raw.scores ?? []).map(normalizeScore);
+    // Prefer the server's authoritative `participants_count`. The dedup
+    // fallback is only correct because `/scores` returns EVERY participant's
+    // rows and the `wallet` filter below is applied CLIENT-SIDE - so `scores`
+    // here still holds the full set. If `/scores` ever gains server-side wallet
+    // filtering, `raw.scores` would already be narrowed and this fallback would
+    // undercount; the server must then always send `participants_count` (or the
+    // filter must move below this line).
+    const participantsCount =
+      raw.participants_count ??
+      new Set(scores.map((s) => s.wallet.toLowerCase())).size;
     if (params.wallet) {
       const wallet = params.wallet.toLowerCase();
       scores = scores.filter((s) => s.wallet.toLowerCase() === wallet);
     }
-    return { ...epochBase(raw), scores };
+    return { ...epochBase(raw), scores, participantsCount };
   };
 
   return {

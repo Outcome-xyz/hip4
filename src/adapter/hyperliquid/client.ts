@@ -18,6 +18,7 @@ import type {
   HLFill,
   HLFrontendOrder,
   HLL2Book,
+  HLLedgerUpdate,
   HLModifyAction,
   HLModifyResponse,
   HLOrderAction,
@@ -295,6 +296,20 @@ export class HIP4Client {
       aggregateByTime: true,
       reversed: true,
       dex: ALL_DEXS,
+    });
+  }
+
+  /**
+   * Non-funding ledger updates (deposits, withdrawals, transfers).
+   * REST counterpart of the WS `userNonFundingLedgerUpdates` channel.
+   * Returns newest-first.
+   */
+  async fetchUserNonFundingLedgerUpdates(
+    user: string,
+  ): Promise<HLLedgerUpdate[]> {
+    return this.infoPost<HLLedgerUpdate[]>({
+      type: "userNonFundingLedgerUpdates",
+      user,
     });
   }
 

@@ -87,6 +87,9 @@ type MonarchScore = {
 
 export type MonarchScoresResponse = MonarchEpochBase & {
   scores?: MonarchScore[];
+  // Total distinct participants for the epoch (everyone who scored), reported
+  // independently of the optional wallet filter. Absent on older backends.
+  participants_count?: number;
 };
 
 // -- Fetch with retry-once semantics -------------------------------------------
