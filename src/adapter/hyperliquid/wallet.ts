@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { applySlippage } from "../../lib/precision/financial";
-import { toDecimal } from "../../lib/precision/primitives";
+import { Decimal, toDecimal } from "../../lib/precision/primitives";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import {
@@ -260,7 +260,8 @@ export class HIP4WalletAdapter {
       ? HYPE_USDC_SPOT_INDEX_TESTNET
       : HYPE_USDC_SPOT_INDEX_MAINNET;
     // HYPE szDecimals=2 — HL rejects sizes with more than 2 decimal places.
-    const sz = Number(amount).toFixed(2);
+    // Floor (not round) so we never exceed the caller's balance on a sell.
+    const sz = toDecimal(amount).toFixed(2, Decimal.ROUND_DOWN);
     return this.executeSpotOrder(false, sz, spotIndex);
   }
 
