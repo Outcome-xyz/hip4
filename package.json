@@ -1,6 +1,6 @@
 {
   "name": "@outcome.xyz/hip4",
-  "version": "1.0.1-beta",
+  "version": "1.0.2-beta",
   "description": "TypeScript SDK for Hyperliquid HIP-4",
   "repository": {
     "type": "git",

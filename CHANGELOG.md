@@ -5,6 +5,25 @@ All notable changes to `@outcome.xyz/hip4` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2-beta] - 2026-06-25
+
+### Added
+
+- `wallet.sellHype(amount)` - sell HYPE on the HYPE/USDC spot market. Size is
+  floored to HYPE's 2 decimals (`ROUND_DOWN`) so a sell never exceeds the
+  caller's balance.
+- `wallet.agentSetAbstraction("u" | "p" | "i")` - switch the master account's
+  abstraction mode (`"u"` unifiedAccount, `"p"` portfolioMargin, `"i"`
+  disabled) via the approved agent key.
+- `client.fetchUserNonFundingLedgerUpdates(user)` - REST counterpart of the
+  `userNonFundingLedgerUpdates` channel (deposits, withdrawals, transfers),
+  returned newest-first.
+- `participantsCount` on liquidity-reward `checkRewards` results - total
+  distinct participants for the epoch, independent of the `wallet` filter.
+- Exported `HYPE_USDC_SPOT_INDEX_MAINNET` / `HYPE_USDC_SPOT_INDEX_TESTNET`
+  constants and `HLLedgerUpdate`, `HLLedgerDelta`, `HLWebData3`,
+  `HLClearinghouseState`, `HLFrontendOrder` types from the root entry point.
+
 ## [1.0.1-beta] - 2026-06-11
 
 ### Added
@@ -44,5 +63,6 @@ Initial public beta release.
 - Node 18+ required.
 - React bindings live in a separate package (`@outcome.xyz/hip4-react`).
 
+[1.0.2-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.2-beta
 [1.0.1-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.1-beta
 [1.0.0-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.0-beta
