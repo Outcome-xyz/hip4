@@ -344,3 +344,59 @@ describe("coinOutcomeId with + prefix", () => {
     expect(coinOutcomeId("+1")).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// fetchUserNonFundingLedgerUpdates
+// ---------------------------------------------------------------------------
+
+describe("fetchUserNonFundingLedgerUpdates", () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("POSTs the userNonFundingLedgerUpdates info action with the user address", async () => {
+    const fetchMock = mockFetchOk([]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new HIP4Client();
+    await client.fetchUserNonFundingLedgerUpdates("0xabc");
+
+    const init = fetchMock.mock.calls[0][1];
+    const body = JSON.parse(init.body as string);
+    expect(body).toEqual({ type: "userNonFundingLedgerUpdates", user: "0xabc" });
+  });
+
+  it("returns the ledger update array unchanged", async () => {
+    const updates = [
+      {
+        time: 1700000000000,
+        hash: "0x" + "ab".repeat(32),
+        delta: { type: "deposit", usdc: "100" },
+      },
+      {
+        time: 1700000001000,
+        hash: "0x" + "cd".repeat(32),
+        delta: { type: "withdraw", usdc: "25", fee: "0.5" },
+      },
+    ];
+    vi.stubGlobal("fetch", mockFetchOk(updates));
+
+    const client = new HIP4Client();
+    const result = await client.fetchUserNonFundingLedgerUpdates("0xabc");
+    expect(result).toEqual(updates);
+  });
+
+  it("returns an empty array when the user has no updates", async () => {
+    vi.stubGlobal("fetch", mockFetchOk([]));
+
+    const client = new HIP4Client();
+    const result = await client.fetchUserNonFundingLedgerUpdates("0xabc");
+    expect(result).toEqual([]);
+  });
+});
