@@ -5,6 +5,14 @@ All notable changes to `@outcome.xyz/hip4` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3-beta] - 2026-07-06
+
+### Fixed
+
+- Shared WebSocket subscriptions are now reference-counted so a single
+  `unsubscribe()` no longer tears down the underlying stream for the remaining
+  subscribers.
+
 ## [1.0.2-beta] - 2026-06-25
 
 ### Added
@@ -63,6 +71,7 @@ Initial public beta release.
 - Node 18+ required.
 - React bindings live in a separate package (`@outcome.xyz/hip4-react`).
 
+[1.0.3-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.3-beta
 [1.0.2-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.2-beta
 [1.0.1-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.1-beta
 [1.0.0-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.0-beta
