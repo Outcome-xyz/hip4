@@ -30,7 +30,10 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
   private readonly _marketData: HIP4MarketDataAdapter;
 
   constructor(config: CreateHIP4AdapterConfig = {}) {
-    const testnet = config.testnet ?? true;
+    // Default to mainnet — see HIP4Client constructor for why defaulting to
+    // testnet causes "Must deposit before performing actions" for mainnet
+    // users. Opt into testnet explicitly with `testnet: true`.
+    const testnet = config.testnet ?? false;
     this.name = testnet ? "Hyperliquid HIP-4 (Testnet)" : "Hyperliquid HIP-4";
 
     this.client = new HIP4Client({

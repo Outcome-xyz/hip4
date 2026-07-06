@@ -41,8 +41,17 @@ describe("HIP4Client", () => {
   // -- Constructor ----------------------------------------------------------
 
   describe("constructor", () => {
-    it("defaults to testnet URLs", () => {
+    it("defaults to mainnet URLs", () => {
       const client = new HIP4Client();
+
+      expect(client.testnet).toBe(false);
+      expect(client.infoUrl).toBe("https://api.hyperliquid.xyz/info");
+      expect(client.exchangeUrl).toBe("https://api.hyperliquid.xyz/exchange");
+      expect(client.wsUrl).toBe("wss://api.hyperliquid.xyz/ws");
+    });
+
+    it("uses testnet URLs when testnet is true", () => {
+      const client = new HIP4Client({ testnet: true });
 
       expect(client.testnet).toBe(true);
       expect(client.infoUrl).toBe(
@@ -52,15 +61,6 @@ describe("HIP4Client", () => {
         "https://api-ui.hyperliquid-testnet.xyz/exchange",
       );
       expect(client.wsUrl).toBe("wss://api-ui.hyperliquid-testnet.xyz/ws");
-    });
-
-    it("uses mainnet URLs when testnet is false", () => {
-      const client = new HIP4Client({ testnet: false });
-
-      expect(client.testnet).toBe(false);
-      expect(client.infoUrl).toBe("https://api.hyperliquid.xyz/info");
-      expect(client.exchangeUrl).toBe("https://api.hyperliquid.xyz/exchange");
-      expect(client.wsUrl).toBe("wss://api.hyperliquid.xyz/ws");
     });
 
     it("uses custom URLs when provided", () => {

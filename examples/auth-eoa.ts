@@ -21,7 +21,11 @@ import {
   submitAgentApproval,
 } from "../src";
 
-const IS_MAINNET = false;
+// Mainnet by default; set TESTNET=1 to target testnet. Pointing the SDK at the
+// wrong network is the #1 onboarding mistake: a mainnet-funded account does not
+// exist on testnet, so HL rejects agent approval with "Must deposit before
+// performing actions".
+const IS_MAINNET = !process.env.TESTNET;
 const AGENT_NAME = "HIP-4 Example";
 
 async function main() {

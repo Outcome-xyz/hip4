@@ -23,6 +23,7 @@ import type {
   HLModifyResponse,
   HLOrderAction,
   HLOutcomeMeta,
+  HLPreTransferCheck,
   HLReferralState,
   HLSettledOutcome,
   HLSignature,
@@ -197,7 +198,11 @@ export class HIP4Client {
   ) => void;
 
   constructor(config: HIP4ClientConfig = {}) {
-    this.testnet = config.testnet ?? true;
+    // Default to mainnet. Defaulting to testnet silently points mainnet-funded
+    // accounts at an exchange where they don't exist, which HL rejects with
+    // "Must deposit before performing actions" on the first signed action
+    // (e.g. agent approval). Opt into testnet explicitly with `testnet: true`.
+    this.testnet = config.testnet ?? false;
     this.infoUrl =
       config.infoUrl ?? (this.testnet ? TESTNET_INFO_URL : MAINNET_INFO_URL);
     this.exchangeUrl =
@@ -380,6 +385,26 @@ export class HIP4Client {
    */
   async fetchUserAbstraction(user: string): Promise<HLUserAbstraction> {
     return this.infoPost<HLUserAbstraction>({ type: "userAbstraction", user });
+  }
+
+  /**
+   * Read-only check of whether an address is initialized on HL's exchange.
+   *
+   * `userExists === false` predicts a `"Must deposit before performing
+   * actions"` rejection on any signed action — without signing or spending
+   * anything. `source` defaults to `user` for a self-existence check.
+   *
+   * Endpoint: `POST /info` body `{ type: "preTransferCheck", user, source }`.
+   */
+  async fetchPreTransferCheck(
+    user: string,
+    source?: string,
+  ): Promise<HLPreTransferCheck> {
+    return this.infoPost<HLPreTransferCheck>({
+      type: "preTransferCheck",
+      user,
+      source: source ?? user,
+    });
   }
 
   /** Frontend-formatted open orders */

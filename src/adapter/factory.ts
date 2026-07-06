@@ -2,6 +2,13 @@ import { HyperliquidHip4Adapter } from "./hyperliquid";
 
 /** Configuration for creating a HIP-4 prediction market adapter. */
 export interface CreateHIP4AdapterConfig {
+	/**
+	 * Target Hyperliquid testnet instead of mainnet. Defaults to `false`
+	 * (mainnet). Leaving this unset while your account is funded on mainnet is
+	 * correct; setting `true` points the SDK at testnet, where a mainnet
+	 * account does not exist and HL rejects the first signed action with
+	 * "Must deposit before performing actions".
+	 */
 	testnet?: boolean;
 	infoUrl?: string;
 	exchangeUrl?: string;

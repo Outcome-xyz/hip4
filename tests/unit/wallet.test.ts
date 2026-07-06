@@ -470,11 +470,11 @@ describe("HIP4WalletAdapter", () => {
       expect(res.error).toBe("Agent not approved");
     });
 
-    it("falls back to a default error message when response is not a string", async () => {
+    it("falls back to a default error message when response has no usable string", async () => {
       const client = mockClient();
       (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mockResolvedValue({
         status: "err",
-        response: { error: "ignored object" },
+        response: { unexpected: "shape" },
       });
       const auth = mockAuth();
       const wallet = new HIP4WalletAdapter(client, auth as any);
@@ -482,6 +482,20 @@ describe("HIP4WalletAdapter", () => {
       const res = await wallet.agentSetAbstraction("u");
       expect(res.success).toBe(false);
       expect(res.error).toBe("Failed to set abstraction");
+    });
+
+    it("surfaces an object response's error field", async () => {
+      const client = mockClient();
+      (client.submitUserSignedAction as ReturnType<typeof vi.fn>).mockResolvedValue({
+        status: "err",
+        response: { error: "Abstraction transition not allowed" },
+      });
+      const auth = mockAuth();
+      const wallet = new HIP4WalletAdapter(client, auth as any);
+
+      const res = await wallet.agentSetAbstraction("u");
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Abstraction transition not allowed");
     });
   });
 });

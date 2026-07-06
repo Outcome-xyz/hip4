@@ -1,3 +1,4 @@
+import { annotateExchangeError } from "./exchange-errors";
 import { splitHexSignature, type HLSignature } from "./types";
 
 const HL_MAINNET_CHAIN_ID = 42161;
@@ -126,7 +127,7 @@ export async function submitBuilderFeeApproval(
       typeof result.response === "string"
         ? result.response
         : result.response?.error ?? "Failed to approve builder fee";
-    return { success: false, error: errorMsg };
+    return { success: false, error: annotateExchangeError(errorMsg) };
   } catch (error) {
     return {
       success: false,
@@ -187,7 +188,7 @@ export async function submitAgentApproval(
       typeof result.response === "string"
         ? result.response
         : (result.response?.error ?? "Failed to approve agent");
-    return { success: false, error };
+    return { success: false, error: annotateExchangeError(error) };
   } catch (error) {
     return {
       success: false,

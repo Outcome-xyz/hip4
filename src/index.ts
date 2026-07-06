@@ -18,6 +18,7 @@ export type {
   HLNegateOutcomeAction,
   HLOutcome,
   HLOutcomeMeta,
+  HLPreTransferCheck,
   HLQuestion,
   HLReferralState,
   HLScheduleCancelAction,
@@ -74,11 +75,13 @@ export type {
 /* v2: Market classification */
 /* v2: Coin helpers */
 export {
+  annotateExchangeError,
   buildQuestionIndex,
   classifyAllOutcomes,
   classifyOutcome,
   computeTickSize,
   createHIP4Adapter,
+  exchangeErrorString,
   discoverPriceBinaryMarkets,
   formatMarketLabel,
   formatPredictionPrice,
@@ -102,6 +105,7 @@ export {
   parseOutcomeCoin,
   parseSideCoin,
   periodMinutes,
+  resolveExchangeError,
   roundToTick,
   sideAssetId,
   sideCoin,

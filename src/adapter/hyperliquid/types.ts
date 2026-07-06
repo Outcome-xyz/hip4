@@ -270,12 +270,19 @@ export interface HLSignature {
 
 export interface HLExchangeResponse {
   status: "ok" | "err";
-  response?: {
-    type: "order";
-    data: {
-      statuses: HLOrderStatus[];
-    };
-  };
+  /**
+   * On success this is the structured order payload. On a rejected action
+   * (`status: "err"`) Hyperliquid returns the reason as a bare string here
+   * (e.g. `"Must deposit before performing actions"`), so the type is a union.
+   */
+  response?:
+    | {
+        type: "order";
+        data: {
+          statuses: HLOrderStatus[];
+        };
+      }
+    | string;
 }
 
 export type HLOrderStatus =
@@ -612,6 +619,28 @@ export interface HLExtraAgent {
 export interface HLUserRoleResponse {
   /** Role assigned to the address by Hyperliquid (e.g. "user", "subAccount", "missing"). */
   role?: string;
+}
+
+// -- preTransferCheck (account existence) -----------------------------------
+
+/**
+ * Response of Hyperliquid's `preTransferCheck` info request. The authoritative
+ * read-only way to tell whether an address has been initialized on the
+ * exchange: `userExists === false` predicts a
+ * `"Must deposit before performing actions"` rejection on any signed action,
+ * with no signing or funds required to check.
+ *
+ * Endpoint: `POST /info` body `{ type: "preTransferCheck", user, source }`.
+ */
+export interface HLPreTransferCheck {
+  /** One-time activation fee (USDC, decimal string) charged on first deposit. */
+  fee: string;
+  /** Whether the address is on Hyperliquid's sanctions list. */
+  isSanctioned: boolean;
+  /** Whether Hyperliquid has an initialized exchange record for the address. */
+  userExists: boolean;
+  /** Whether the address has broadcast at least one L1 transaction. */
+  userHasSentTx: boolean;
 }
 
 // -- Account abstraction mode -----------------------------------------------

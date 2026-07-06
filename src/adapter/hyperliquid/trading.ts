@@ -28,6 +28,10 @@ import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
+import {
+  annotateExchangeError,
+  resolveExchangeError,
+} from "./exchange-errors";
 import { formatPrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
 import {
   signL1Action,
@@ -321,8 +325,15 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         null,
       );
 
-      if (res.status !== "ok" || !res.response) {
-        return { success: false, error: "Exchange returned non-ok status" };
+      if (
+        res.status !== "ok" ||
+        !res.response ||
+        typeof res.response === "string"
+      ) {
+        return {
+          success: false,
+          error: resolveExchangeError(res, "Exchange returned non-ok status"),
+        };
       }
 
       const firstStatus = res.response.data.statuses[0];
@@ -331,6 +342,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       }
 
       const result = interpretStatus(firstStatus);
+      if (result.error) result.error = annotateExchangeError(result.error);
       return {
         success: !result.error,
         ...result,
@@ -338,7 +350,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown order error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -412,12 +424,17 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         null,
       );
 
-      if (res.status !== "ok" || !res.response) {
+      if (
+        res.status !== "ok" ||
+        !res.response ||
+        typeof res.response === "string"
+      ) {
+        const error = resolveExchangeError(
+          res,
+          "Exchange returned non-ok status",
+        );
         for (const idx of wireToInputIndex) {
-          results[idx] = {
-            success: false,
-            error: "Exchange returned non-ok status",
-          };
+          results[idx] = { success: false, error };
         }
         return { success: false, results };
       }
@@ -433,14 +450,18 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
           };
         } else {
           const interpreted = interpretStatus(status);
+          if (interpreted.error) {
+            interpreted.error = annotateExchangeError(interpreted.error);
+          }
           results[inputIdx] = { success: !interpreted.error, ...interpreted };
         }
       }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown order error";
+      const error = annotateExchangeError(message);
       for (const idx of wireToInputIndex) {
-        results[idx] = { success: false, error: message };
+        results[idx] = { success: false, error };
       }
     }
 
@@ -549,11 +570,10 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         // HL returns the rejection reason as a plain string in `response`
         // on top-level errors (e.g. "Price would cross book"). Surface it
         // so users see something actionable instead of a generic string.
-        const errorMsg =
-          typeof res.response === "string"
-            ? res.response
-            : "Exchange returned non-ok status";
-        return { success: false, error: errorMsg };
+        return {
+          success: false,
+          error: resolveExchangeError(res, "Exchange returned non-ok status"),
+        };
       }
 
       // Modify's success response shape is looser than placeOrder: HL
@@ -573,6 +593,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       }
 
       const result = interpretStatus(firstStatus);
+      if (result.error) result.error = annotateExchangeError(result.error);
       return {
         success: !result.error,
         ...result,
@@ -580,7 +601,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown modify error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -667,22 +688,14 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
 
       if (res.status === "ok") return { success: true };
 
-      let errorMsg = "User outcome action failed";
-      if (typeof res.response === "string") {
-        errorMsg = res.response;
-      } else if (
-        res.response &&
-        typeof res.response === "object" &&
-        !Array.isArray(res.response)
-      ) {
-        const obj = res.response as Record<string, unknown>;
-        if (typeof obj.error === "string") errorMsg = obj.error;
-      }
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: resolveExchangeError(res, "User outcome action failed"),
+      };
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown user outcome error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -729,22 +742,14 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
 
       if (res.status === "ok") return { success: true };
 
-      let errorMsg = "scheduleCancel failed";
-      if (typeof res.response === "string") {
-        errorMsg = res.response;
-      } else if (
-        res.response &&
-        typeof res.response === "object" &&
-        !Array.isArray(res.response)
-      ) {
-        const obj = res.response as Record<string, unknown>;
-        if (typeof obj.error === "string") errorMsg = obj.error;
-      }
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: resolveExchangeError(res, "scheduleCancel failed"),
+      };
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown scheduleCancel error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 }

@@ -20,6 +20,10 @@ import {
   HYPE_CORE_EVM_SYSTEM_ADDRESS,
 } from "./core-evm-system-address";
 import {
+  annotateExchangeError,
+  resolveExchangeError,
+} from "./exchange-errors";
+import {
   HYPE_USDC_SPOT_INDEX_MAINNET,
   HYPE_USDC_SPOT_INDEX_TESTNET,
 } from "./hype-spot-mark-px";
@@ -515,8 +519,15 @@ export class HIP4WalletAdapter {
         signature,
         null,
       );
-      if (res.status !== "ok" || !res.response) {
-        return { success: false, error: "Exchange returned non-ok status" };
+      if (
+        res.status !== "ok" ||
+        !res.response ||
+        typeof res.response === "string"
+      ) {
+        return {
+          success: false,
+          error: resolveExchangeError(res, "Exchange returned non-ok status"),
+        };
       }
 
       const firstStatus = res.response.data.statuses[0];
@@ -524,7 +535,7 @@ export class HIP4WalletAdapter {
         return { success: false, error: "No order status returned" };
       }
       if ("error" in firstStatus) {
-        return { success: false, error: firstStatus.error };
+        return { success: false, error: annotateExchangeError(firstStatus.error) };
       }
 
       const filled =
@@ -543,7 +554,7 @@ export class HIP4WalletAdapter {
       };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -581,21 +592,13 @@ export class HIP4WalletAdapter {
         return { success: true };
       }
 
-      let errorMsg = "Failed to set referrer";
-      if (typeof res.response === "string") {
-        errorMsg = res.response;
-      } else if (
-        res.response &&
-        typeof res.response === "object" &&
-        !Array.isArray(res.response)
-      ) {
-        const obj = res.response as Record<string, unknown>;
-        if (typeof obj.error === "string") errorMsg = obj.error;
-      }
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: resolveExchangeError(res, "Failed to set referrer"),
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -634,14 +637,13 @@ export class HIP4WalletAdapter {
 
       if (res.status === "ok") return { success: true };
 
-      const errorMsg =
-        typeof res.response === "string"
-          ? res.response
-          : "Failed to set abstraction";
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: resolveExchangeError(res, "Failed to set abstraction"),
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 
@@ -685,21 +687,13 @@ export class HIP4WalletAdapter {
         return { success: true };
       }
 
-      let errorMsg = "Action failed";
-      if (typeof res.response === "string") {
-        errorMsg = res.response;
-      } else if (
-        res.response &&
-        typeof res.response === "object" &&
-        !Array.isArray(res.response)
-      ) {
-        const obj = res.response as Record<string, unknown>;
-        if (typeof obj.error === "string") errorMsg = obj.error;
-      }
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: resolveExchangeError(res, "Action failed"),
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return { success: false, error: message };
+      return { success: false, error: annotateExchangeError(message) };
     }
   }
 }

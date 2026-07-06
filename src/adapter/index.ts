@@ -19,6 +19,11 @@ export {
   sideAssetId,
   sideCoin,
 } from "./hyperliquid/client";
+export {
+  annotateExchangeError,
+  exchangeErrorString,
+  resolveExchangeError,
+} from "./hyperliquid/exchange-errors";
 export { HIP4EventAdapter } from "./hyperliquid/events";
 export type { QuestionIndex } from "./hyperliquid/market-classification";
 export {
@@ -74,6 +79,7 @@ export type {
   HLNegateOutcomeAction,
   HLOutcome,
   HLOutcomeMeta,
+  HLPreTransferCheck,
   HLQuestion,
   HLReferralState,
   HLScheduleCancelAction,
