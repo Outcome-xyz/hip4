@@ -470,10 +470,19 @@ export class HIP4Client {
   private wsCallbacks: Map<string, Set<(data: unknown) => void>> = new Map();
   /** Active subscribe messages as JSON strings (for reconnection). */
   private wsActiveSubs: Set<string> = new Set();
+  /**
+   * Subscriber count per subscribe message. Multiple consumers can subscribe
+   * with an identical payload (e.g. several price feeds all on `allMids`) and
+   * share one wire subscription — the wire subscribe is sent only by the
+   * first, and the wire unsubscribe only by the last one to leave. Without
+   * this, the first consumer's unsubscribe silently killed the stream for
+   * every remaining subscriber.
+   */
+  private wsSubRefCounts: Map<string, number> = new Map();
 
   /**
    * Subscribe to a Hyperliquid WebSocket channel.
-   * Returns an unsubscribe function.
+   * Returns an idempotent unsubscribe function.
    *
    * @param options.responseChannel  Channel name HL uses in response messages
    *   when it differs from `subscription.type` (e.g. subscribe as
@@ -487,14 +496,19 @@ export class HIP4Client {
     const responseChannel = options?.responseChannel ?? subscription.type;
     this.ensureWs();
 
-    // Send subscribe to HL
+    // Send subscribe to HL only for the first subscriber of this payload —
+    // duplicates just bump the refcount and share the wire subscription.
     const subMsg = JSON.stringify({ method: "subscribe", subscription });
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(subMsg);
-    } else {
-      this.wsPendingMessages.push(subMsg);
+    const refs = this.wsSubRefCounts.get(subMsg) ?? 0;
+    if (refs === 0) {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(subMsg);
+      } else {
+        this.wsPendingMessages.push(subMsg);
+      }
+      this.wsActiveSubs.add(subMsg);
     }
-    this.wsActiveSubs.add(subMsg);
+    this.wsSubRefCounts.set(subMsg, refs + 1);
 
     // Register callback for message routing
     if (!this.wsCallbacks.has(responseChannel)) {
@@ -502,12 +516,24 @@ export class HIP4Client {
     }
     this.wsCallbacks.get(responseChannel)?.add(onData);
 
+    // Idempotent: React Strict Mode (and defensive callers) may invoke the
+    // cleanup twice; a double-run must not decrement another consumer's ref.
+    let unsubscribed = false;
     return () => {
-      // Send unsubscribe to HL
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ method: "unsubscribe", subscription }));
+      if (unsubscribed) return;
+      unsubscribed = true;
+
+      // Send unsubscribe to HL only when the last subscriber leaves
+      const remaining = (this.wsSubRefCounts.get(subMsg) ?? 1) - 1;
+      if (remaining <= 0) {
+        this.wsSubRefCounts.delete(subMsg);
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ method: "unsubscribe", subscription }));
+        }
+        this.wsActiveSubs.delete(subMsg);
+      } else {
+        this.wsSubRefCounts.set(subMsg, remaining);
       }
-      this.wsActiveSubs.delete(subMsg);
 
       // Remove callback
       const cbs = this.wsCallbacks.get(responseChannel);
@@ -537,6 +563,7 @@ export class HIP4Client {
     }
     this.wsCallbacks.clear();
     this.wsActiveSubs.clear();
+    this.wsSubRefCounts.clear();
     this.wsPendingMessages = [];
   }
 
