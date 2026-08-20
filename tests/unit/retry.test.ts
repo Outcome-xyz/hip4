@@ -149,3 +149,81 @@ describe("infoPost retry logic", () => {
     await promise;
   });
 });
+
+// ---------------------------------------------------------------------------
+// Body-read failure classification
+//
+// These all arrive on a 2xx (`res.ok` is checked first), so they are read
+// failures, not protocol failures. They used to collapse into a single
+// message with the cause discarded, which made a dropped connection or an
+// expired request deadline indistinguishable from the exchange actually
+// returning something that was not JSON.
+// ---------------------------------------------------------------------------
+
+describe("body-read failure classification", () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllGlobals();
+  });
+
+  /** A 2xx whose body read rejects with `cause`. */
+  function mockFetchBodyFailure(cause: unknown) {
+    return vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: () => Promise.reject(cause),
+    });
+  }
+
+  it("reports an aborted body read as a timeout, not as non-JSON", async () => {
+    // `AbortSignal.timeout` stays armed while the body streams, so a body
+    // still arriving at the deadline aborts during `res.json()`. Reporting
+    // that as a protocol violation is what sent it to the wrong triage.
+    const timeout = new Error("The operation timed out");
+    timeout.name = "TimeoutError";
+    vi.stubGlobal("fetch", mockFetchBodyFailure(timeout));
+
+    const client = new HIP4Client();
+    const err = await client.fetchAllMids().catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(HLApiError);
+    expect((err as HLApiError).message).toContain("body read aborted");
+    expect((err as HLApiError).message).not.toContain("non-JSON");
+    expect((err as HLApiError).cause).toBe(timeout);
+  });
+
+  it("reports a dropped connection as a lost connection, not as non-JSON", async () => {
+    const dropped = new TypeError("network error");
+    vi.stubGlobal("fetch", mockFetchBodyFailure(dropped));
+
+    const client = new HIP4Client();
+    const err = await client.fetchAllMids().catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(HLApiError);
+    expect((err as HLApiError).message).toContain("connection lost");
+    expect((err as HLApiError).message).not.toContain("non-JSON");
+    expect((err as HLApiError).cause).toBe(dropped);
+  });
+
+  it("still reports a genuinely non-JSON body as such, and keeps the cause", async () => {
+    const syntax = new SyntaxError("Unexpected end of JSON input");
+    vi.stubGlobal("fetch", mockFetchBodyFailure(syntax));
+
+    const client = new HIP4Client();
+    const err = await client.fetchAllMids().catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(HLApiError);
+    // The status in the message is what stops distinct failures sharing one
+    // group in aggregators that group by message.
+    expect((err as HLApiError).message).toContain("non-JSON response body");
+    expect((err as HLApiError).message).toContain("HTTP 200");
+    expect((err as HLApiError).cause).toBe(syntax);
+  });
+});

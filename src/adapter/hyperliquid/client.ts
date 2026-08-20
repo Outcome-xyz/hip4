@@ -41,10 +41,67 @@ export class HLApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "HLApiError";
   }
+}
+
+/** Deadline for a single info/exchange request, including its body read. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Builds the error for a response whose body could not be read as JSON.
+ *
+ * `res.ok` is always checked before this runs, so the status is 2xx: the
+ * request succeeded and the BODY READ failed. Three unrelated causes land
+ * here and they need telling apart:
+ *
+ *  - `TimeoutError` / `AbortError` — `AbortSignal.timeout` stays armed while
+ *    the body streams, because `fetch` resolves as soon as headers arrive. A
+ *    body still in flight at the deadline aborts *here*, not at the request.
+ *  - `TypeError` — the connection dropped mid-body.
+ *  - `SyntaxError` — the body genuinely is not JSON: an empty 200, or an
+ *    HTML error/interstitial page served with a 2xx.
+ *
+ * Collapsing all three into one `"Exchange returned non-JSON response"` with
+ * a discarded cause made every client-side connectivity blip look like an
+ * exchange contract violation, and left no way to tell which had happened.
+ * Consumers classify on error shape, so a timeout reported as a protocol
+ * fault gets triaged — and alerted on — as the wrong thing entirely.
+ *
+ * The status is included in the message so these no longer share one group in
+ * aggregators that group by message.
+ */
+function bodyReadError(
+  status: number,
+  endpoint: "info" | "exchange",
+  cause: unknown,
+): HLApiError {
+  const name = cause instanceof Error ? cause.name : "";
+  if (name === "TimeoutError" || name === "AbortError") {
+    return new HLApiError(
+      status,
+      `HL ${endpoint} API body read aborted after ${REQUEST_TIMEOUT_MS}ms (HTTP ${status})`,
+      { cause },
+    );
+  }
+  if (cause instanceof TypeError) {
+    return new HLApiError(
+      status,
+      `HL ${endpoint} API body read failed: connection lost (HTTP ${status})`,
+      { cause },
+    );
+  }
+  // Wording keeps the "non-JSON response" substring the previous message had:
+  // it is still accurate for this branch, and it is what existing consumers
+  // and tests match on. Only the added status/endpoint/cause are new.
+  return new HLApiError(
+    status,
+    `HL ${endpoint} API returned a non-JSON response body (HTTP ${status})`,
+    { cause },
+  );
 }
 
 const MAINNET_INFO_URL = "https://api.hyperliquid.xyz/info";
@@ -653,7 +710,7 @@ export class HIP4Client {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new HLApiError(
@@ -663,8 +720,8 @@ export class HIP4Client {
     }
     try {
       return (await res.json()) as T;
-    } catch {
-      throw new HLApiError(res.status, "Exchange returned non-JSON response");
+    } catch (cause) {
+      throw bodyReadError(res.status, "info", cause);
     }
   }
 
@@ -673,7 +730,7 @@ export class HIP4Client {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new HLApiError(
@@ -683,8 +740,8 @@ export class HIP4Client {
     }
     try {
       return (await res.json()) as T;
-    } catch {
-      throw new HLApiError(res.status, "Exchange returned non-JSON response");
+    } catch (cause) {
+      throw bodyReadError(res.status, "exchange", cause);
     }
   }
 }
