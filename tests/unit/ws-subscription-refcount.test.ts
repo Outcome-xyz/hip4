@@ -63,7 +63,7 @@ describe("WebSocket shared-subscription refcounting", () => {
   it("sends the wire subscribe once for N identical subscriptions", () => {
     const adapter = new HIP4MarketDataAdapter(realClient());
 
-    // Four price feeds all subscribe {type: "allMids"} under the hood —
+    // Four price feeds all subscribe {type: "allMids"} under the hood --
     // the multi-outcome chart's exact usage pattern.
     adapter.subscribePrice("10", vi.fn());
     adapter.subscribePrice("20", vi.fn());
@@ -81,7 +81,7 @@ describe("WebSocket shared-subscription refcounting", () => {
     const unsubA = adapter.subscribePrice("10", cbA);
     adapter.subscribePrice("20", cbB);
 
-    // First consumer leaves — previously this sent a wire unsubscribe and
+    // First consumer leaves -- previously this sent a wire unsubscribe and
     // silently killed the stream for every remaining subscriber.
     unsubA();
     expect(sentOfMethod("unsubscribe")).toHaveLength(0);
@@ -135,7 +135,7 @@ describe("WebSocket shared-subscription refcounting", () => {
     const unsubA = adapter.subscribePrice("10", vi.fn());
     adapter.subscribePrice("20", cbB);
 
-    // React Strict Mode invokes effect cleanups twice — a double-run must
+    // React Strict Mode invokes effect cleanups twice -- a double-run must
     // not decrement another consumer's refcount.
     unsubA();
     unsubA();

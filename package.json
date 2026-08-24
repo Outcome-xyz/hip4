@@ -1,6 +1,6 @@
 {
   "name": "@outcome.xyz/hip4",
-  "version": "1.0.3-beta",
+  "version": "1.1.0-alpha.0",
   "description": "TypeScript SDK for Hyperliquid HIP-4",
   "repository": {
     "type": "git",
@@ -31,11 +31,11 @@
     },
     "./types": {
       "import": {
-        "types": "./dist/types/index.d.ts",
+        "types": "./dist/types.d.ts",
         "default": "./dist/types.js"
       },
       "require": {
-        "types": "./dist/types/index.d.cts",
+        "types": "./dist/types.d.cts",
         "default": "./dist/types.cjs"
       }
     }
@@ -71,7 +71,8 @@
   "author": "Dennis Furrer",
   "license": "BUSL-1.1",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.0",

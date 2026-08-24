@@ -382,7 +382,8 @@ function xorBlock(
 // Hex helpers
 // ---------------------------------------------------------------------------
 
-function bytesToHex(bytes: Uint8Array): string {
+/** Hex-encode bytes with an `0x` prefix. @internal */
+export function bytesToHex(bytes: Uint8Array): string {
   let hex = "0x";
   for (let i = 0; i < bytes.length; i++) {
     hex += bytes[i].toString(16).padStart(2, "0");
@@ -613,20 +614,28 @@ export function sortScheduleCancelAction(
 // ---------------------------------------------------------------------------
 
 /**
+ * Anything that can be msgpack-encoded as an L1 action. Actions are maps,
+ * except the multi-sig inner envelope, which is the 3-element array
+ * `[multiSigUser, outerSigner, action]`.
+ */
+export type L1ActionPayload =
+  | Record<string, unknown>
+  | HLOrderAction
+  | HLCancelAction
+  | HLModifyAction
+  | HLBatchModifyAction
+  | HLUserOutcomeAction
+  | HLScheduleCancelAction
+  | readonly unknown[];
+
+/**
  * Create the Keccak-256 hash of an L1 action for signing.
  *
  * Hash input = msgpack(action) + nonce_be64 + vault_marker
  * vault_marker = 0x00 (no vault) | 0x01 + 20-byte address
  */
 export function createL1ActionHash(params: {
-  action:
-    | Record<string, unknown>
-    | HLOrderAction
-    | HLCancelAction
-    | HLModifyAction
-    | HLBatchModifyAction
-    | HLUserOutcomeAction
-    | HLScheduleCancelAction;
+  action: L1ActionPayload;
   nonce: number;
   vaultAddress?: string | null;
 }): Uint8Array {
@@ -666,14 +675,14 @@ export function createL1ActionHash(params: {
 // EIP-712 Agent Signing
 // ---------------------------------------------------------------------------
 
-const AGENT_DOMAIN = {
+export const AGENT_DOMAIN = {
   name: "Exchange",
   version: "1",
   chainId: 1337,
   verifyingContract: "0x0000000000000000000000000000000000000000",
 };
 
-const AGENT_TYPES = {
+export const AGENT_TYPES = {
   Agent: [
     { name: "source", type: "string" },
     { name: "connectionId", type: "bytes32" },
@@ -688,14 +697,7 @@ const AGENT_TYPES = {
  */
 export async function signL1Action(params: {
   signer: HIP4Signer;
-  action:
-    | Record<string, unknown>
-    | HLOrderAction
-    | HLCancelAction
-    | HLModifyAction
-    | HLBatchModifyAction
-    | HLUserOutcomeAction
-    | HLScheduleCancelAction;
+  action: L1ActionPayload;
   nonce: number;
   isTestnet: boolean;
   vaultAddress?: string | null;

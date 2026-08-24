@@ -58,22 +58,38 @@ export {
   formatPredictionPrice,
   HIP4TradingAdapter,
 } from "./hyperliquid/trading";
+/* The wallet adapter needs one to sign orders, so anything constructing a
+   wallet adapter outside this package needs to be able to construct one. */
+export { HIP4Auth } from "./hyperliquid/auth";
+/* The pieces a caller needs to hand an L1 action to a wallet it does not own:
+   the envelope hash to sign, and the domain and types to sign it under. */
+export {
+  AGENT_DOMAIN,
+  AGENT_TYPES,
+  bytesToHex,
+  createL1ActionHash,
+} from "./hyperliquid/signing";
 export type {
   HIP4Signer,
   HLCancelResponse,
   HLCancelStatus,
   HLCandle,
   HLClearinghouseState,
+  HLDelegatorSummary,
+  HLDeployerEntry,
   HLExtraAgent,
   HLFill,
   HLFrontendOrder,
+  HLKeywordHint,
   HLLedgerDelta,
   HLLedgerUpdate,
   HLMergeOutcomeAction,
   HLMergeQuestionAction,
+  HLMultiSigSigners,
   HLNegateOutcomeAction,
   HLOutcome,
   HLOutcomeMeta,
+  HLOutcomeTemplate,
   HLQuestion,
   HLReferralState,
   HLScheduleCancelAction,
@@ -81,6 +97,8 @@ export type {
   HLSignature,
   HLSpotClearinghouseState,
   HLSplitOutcomeAction,
+  HLTemplateRole,
+  HLTemplateRoleKind,
   HLUserAbstraction,
   HLUserFees,
   HLUserOutcomeAction,

@@ -40,6 +40,9 @@ await hip4.initialize();
 - [`place-market-order.ts`](examples/place-market-order.ts) - Market order with FrontendMarket TIF
 - [`stream-prices.ts`](examples/stream-prices.ts) - Stream live prices via WebSocket
 - [`usdh-ramp.ts`](examples/usdh-ramp.ts) - End-to-end USDH on/off-ramp via Coinbase + Across
+- [`deployer-status.ts`](examples/deployer-status.ts) - Read a deployer's chain state and onboarding checklist (experimental)
+- [`deploy-and-settle.ts`](examples/deploy-and-settle.ts) - Register and settle a market as an approved agent (experimental)
+- [`multisig-approve-agent.ts`](examples/multisig-approve-agent.ts) - Approve an agent through a 2-of-3 multi-sig master (experimental)
 
 ## API
 
@@ -112,6 +115,29 @@ await hip4.initialize();
 | `initAuth(walletAddress, signer)` | Accepts viem `PrivateKeyAccount` or ethers `Signer` |
 | `getAuthStatus()`                 | `"disconnected" \| "pending_approval" \| "ready"`   |
 | `clearAuth()`                     | Reset auth state                                    |
+
+### `hip4.deployer` (experimental)
+
+| Method                                       | Signing  | Description                              |
+| -------------------------------------------- | -------- | ---------------------------------------- |
+| `setSigner(signer)`                          | -        | Agent key, or a leader for multi-sig      |
+| `fetchTemplates()`                           | -        | Live `outcomeTemplates` registry          |
+| `fetchSnapshot(master)`                      | -        | Venue, stake, agents, multi-sig, limits   |
+| `registerStandaloneOutcome(params)`          | L1 agent | Deploy a two-sided market from a template |
+| `registerQuestion(params)`                   | L1 agent | Deploy a question and its named outcomes  |
+| `settleOutcome({ outcomeId, settleFraction })` | L1 agent | Settle a standalone outcome             |
+| `settleQuestion({ questionId, winner })`     | L1 agent | Settle every unsettled named outcome      |
+| `activate(venueName)` / `deactivate()`       | L1 agent | Claim a venue (one-way door)              |
+| `approveAgent({ agentAddress, agentName })`  | EIP-712  | Approve an API wallet                     |
+| `convertToMultiSigUser(params)`              | EIP-712  | Convert the master to native multi-sig    |
+| `setAbstraction({ user, abstraction })`      | EIP-712  | Set the account mode a deployer requires  |
+| `stakeDeposit(amount)` / `stakeWithdraw(amount)` | EIP-712 | Move HYPE in and out of staking       |
+| `submitMultiSig(params)`                     | EIP-712  | Submit a quorum-signed action as leader   |
+| `fetchDeployedOutcomes(venue)`               | -        | Live outcomes of a venue, decoded         |
+| `fetchSettlementQueue(master, window)`       | -        | What still owes settlement, worst first   |
+
+See [docs/DEPLOYER.md](docs/DEPLOYER.md) for the architecture, the multi-sig
+flow, and the one-way doors.
 
 ## Market Types
 
@@ -189,6 +215,34 @@ const rewards = await s1.checkRewards({ wallet: "0x...", date: "2026-06-08" });
 ```
 
 Reward mechanics: [World Cup Outcome Rewards](https://docs.monarch.fast/world-cup-outcome-rewards#reward-program-1-champion-market) · Upstream API: [World Cup API](https://docs.monarch.fast/world-cup-api)
+
+## Deployer (experimental)
+
+Register markets, settle them, approve agents, and run a deployer whose stake
+sits behind a Hyperliquid native multi-sig.
+
+```typescript
+import { createHIP4Adapter, requireTemplate, assertTemplateInstance } from "@outcome.xyz/hip4";
+
+const adapter = createHIP4Adapter({ testnet: true });
+
+// Read-only: what the chain says about a candidate deployer
+const snapshot = await adapter.deployer.fetchSnapshot(master);
+
+// Deploy and settle, signed by an approved agent that holds no funds
+adapter.deployer.setSigner(agentSigner);
+await adapter.deployer.registerStandaloneOutcome({ templateId: "binaryPrice4", values });
+await adapter.deployer.settleOutcome({ outcomeId, settleFraction: "1" });
+```
+
+Deploy and settle sign on chain 1337, which no browser wallet will produce, so
+they are delegated to an agent. `approveAgent` is ordinary typed data on a real
+chain, so the founders can approve that agent from their own wallets and the
+staked master stays out of the hot path.
+
+Everything under `hip4.deployer` and the exports listed in
+[docs/DEPLOYER.md](docs/DEPLOYER.md) is experimental and may change without a
+major version.
 
 ## USDH on/off-ramp (mainnet)
 

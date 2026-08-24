@@ -347,7 +347,7 @@ describe("HIP4WalletAdapter", () => {
       expect(action.orders[0].a).toBe(10107);
     });
 
-    it("floors size to 2 decimals (does not round up — would over-spend on a sell)", async () => {
+    it("floors size to 2 decimals (does not round up - would over-spend on a sell)", async () => {
       const client = mockClient();
       const auth = mockAuth();
       const wallet = new HIP4WalletAdapter(client, auth as any);

@@ -1,0 +1,308 @@
+{
+  "generatedBy": "hyperliquid-python-sdk (hyperliquid.utils.signing)",
+  "regenerateWith": "python3 tests/parity/generate-deployer-vectors.py",
+  "constants": {
+    "master": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+    "leader": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c",
+    "agent": "0xab04c8d8372d83ec939570fd2d956d0bb31aace3",
+    "validator": "0x5ac99df645f3414876c816caa18b2d234024b487",
+    "nonce": 1755530000000,
+    "signatures": [
+      {
+        "r": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "s": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "v": 27
+      },
+      {
+        "r": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "s": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "v": 28
+      }
+    ]
+  },
+  "l1ActionHash": {
+    "registerStandaloneOutcome": "0x9f1c960611c37543ce6f63e533ac1d0a27709e22e723052c1a15ee439547e7da",
+    "registerQuestion": "0x34331ed0c8b866a35ac7b1c61fe71a37419fc4294f8136fbe9eee96a0eb28d33",
+    "settleOutcome": "0xba7e301bccfb7825979c11f4fb53ad7ec7d6d3402e1e70ab38804d3cdfd2af37",
+    "settleQuestion": "0x83e9564c529f0e43cdb26f387bba1832d4c4504af8c1dee627d84b302f269964",
+    "activate": "0xb6527b4ba1d06d7884f85a2f0c165fde59becd3bc7f8725bc0f481e3a2c7f1cd",
+    "deactivate": "0x09347b89957d861d9d2a55f2aed6d87579e1c7c4b5e9f1d59de7367a0aa91003"
+  },
+  "multiSigInnerL1Hash": {
+    "registerStandaloneOutcome": "0x8031f9b115d7b45c89d172b5a9a79ed5c8ba671244eb06f7c34cb9196b1013d3",
+    "settleQuestion": "0xd6bc76ae44958f2d2b42fcdfee90a23aaa7a6d5b286fa8fa2343b0967f6ca2c6",
+    "activate": "0x32e4f02e2a5749f37081f1990e55fa5b576ae623adaecc89a5bc6edd453f3203"
+  },
+  "multiSigEnvelopeHash": {
+    "approveAgent": "0x97a2ab3b446c2139391611971883db8c0010e696ea963cba2693b24acc41bac4",
+    "convertToMultiSigUser": "0xe51f6ad09a3c3cd07f8fb073b196e0389655655890cf13d4ad1a5ab9177cc503",
+    "userSetAbstraction": "0x86323411382dce73c5ab0ea4752c01623506a78a165365871fddd0aa1487ad94",
+    "tokenDelegate": "0x5cc0c2fe866434dfb62c7383954fcbb0f854490cbe3896e3935fc8301b640764",
+    "cDeposit": "0xec57d94f5a6a6a10c8225dcbdb68b4518213741677eb85680c7b92b3ed2e8044",
+    "cWithdraw": "0xb19b435e5d6963e729817a3ef4a9f5eb57acbb33cacde7b1040368012e8da91e",
+    "userSetAbstractionWire": "0x4aa8cf30a5f4611645ac46441cc2722a4e52d745890a5f6a66bf2e5935ad0d16",
+    "registerStandaloneOutcome": "0xa58194e3330a17e38f66c8ab7ff3637032e9e02e9a7f41096af62de6fbd0056d"
+  },
+  "userSignedPayload": {
+    "approveAgent": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "agentAddress",
+          "type": "address"
+        },
+        {
+          "name": "agentName",
+          "type": "string"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:ApproveAgent",
+      "message": {
+        "type": "approveAgent",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "agentAddress": "0xab04c8d8372d83ec939570fd2d956d0bb31aace3",
+        "agentName": "poc",
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "convertToMultiSigUser": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "signers",
+          "type": "string"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:ConvertToMultiSigUser",
+      "message": {
+        "type": "convertToMultiSigUser",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "signers": "{\"authorizedUsers\":[\"0x251fd19df63a83652eea93a6a5e451aa5ce81e4c\",\"0xa8d106881abe9a0b6ffd367788d6af91439d37f6\"],\"threshold\":2}",
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "userSetAbstraction": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "name": "abstraction",
+          "type": "string"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:UserSetAbstraction",
+      "message": {
+        "type": "userSetAbstraction",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "user": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "abstraction": "disabled",
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "tokenDelegate": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "validator",
+          "type": "address"
+        },
+        {
+          "name": "wei",
+          "type": "uint64"
+        },
+        {
+          "name": "isUndelegate",
+          "type": "bool"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:TokenDelegate",
+      "message": {
+        "type": "tokenDelegate",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "validator": "0x5ac99df645f3414876c816caa18b2d234024b487",
+        "wei": 10000000000,
+        "isUndelegate": false,
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "cDeposit": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "wei",
+          "type": "uint64"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:CDeposit",
+      "message": {
+        "type": "cDeposit",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "wei": 12000050000,
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "cWithdraw": {
+      "types": [
+        {
+          "name": "hyperliquidChain",
+          "type": "string"
+        },
+        {
+          "name": "payloadMultiSigUser",
+          "type": "address"
+        },
+        {
+          "name": "outerSigner",
+          "type": "address"
+        },
+        {
+          "name": "wei",
+          "type": "uint64"
+        },
+        {
+          "name": "nonce",
+          "type": "uint64"
+        }
+      ],
+      "primaryType": "HyperliquidTransaction:CWithdraw",
+      "message": {
+        "type": "cWithdraw",
+        "signatureChainId": "0x66eee",
+        "hyperliquidChain": "Testnet",
+        "wei": 100000000,
+        "nonce": 1755530000000,
+        "payloadMultiSigUser": "0xa8d106881abe9a0b6ffd367788d6af91439d37f6",
+        "outerSigner": "0x251fd19df63a83652eea93a6a5e451aa5ce81e4c"
+      },
+      "domain": {
+        "name": "HyperliquidSignTransaction",
+        "version": "1",
+        "chainId": 421614,
+        "verifyingContract": "0x0000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

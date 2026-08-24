@@ -6,6 +6,7 @@
 //   #<outcomeId><sideIndex>   - per-side probability market (0-1 range)
 // ---------------------------------------------------------------------------
 
+import { HIP4DeployerAdapter } from "../../deployer";
 import type { CreateHIP4AdapterConfig } from "../factory";
 import type { PredictionsAdapter } from "../types";
 import { HIP4AccountAdapter } from "./account";
@@ -25,6 +26,8 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
   readonly trading: HIP4TradingAdapter;
   readonly auth: PredictionsAdapter["auth"];
   readonly wallet: HIP4WalletAdapter;
+  /** @experimental HIP-4 deployment, settlement, agents and multi-sig. */
+  readonly deployer: HIP4DeployerAdapter;
 
   readonly client: HIP4Client;
   private readonly _marketData: HIP4MarketDataAdapter;
@@ -54,6 +57,7 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
     });
     this.auth = auth;
     this.wallet = new HIP4WalletAdapter(this.client, auth);
+    this.deployer = new HIP4DeployerAdapter(this.client);
   }
 
 

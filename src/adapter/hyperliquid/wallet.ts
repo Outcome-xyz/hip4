@@ -255,11 +255,28 @@ export class HIP4WalletAdapter {
     return this.executeSpotOrder(false, amount);
   }
 
+  /**
+   * Buy HYPE with USDC on the spot pair. `amount` is HYPE, not USDC.
+   *
+   * The counterpart to sellHype, and the same rounding: HYPE has szDecimals=2
+   * and the exchange rejects a size with more precision. Floored rather than
+   * rounded here too -- rounding up asks to buy fractionally more than the
+   * caller said, which on a thin book is the difference between a fill and a
+   * rejection for insufficient balance.
+   */
+  async buyHype(amount: string): Promise<WalletActionResult> {
+    const spotIndex = this.client.testnet
+      ? HYPE_USDC_SPOT_INDEX_TESTNET
+      : HYPE_USDC_SPOT_INDEX_MAINNET;
+    const sz = toDecimal(amount).toFixed(2, Decimal.ROUND_DOWN);
+    return this.executeSpotOrder(true, sz, spotIndex);
+  }
+
   async sellHype(amount: string): Promise<WalletActionResult> {
     const spotIndex = this.client.testnet
       ? HYPE_USDC_SPOT_INDEX_TESTNET
       : HYPE_USDC_SPOT_INDEX_MAINNET;
-    // HYPE szDecimals=2 — HL rejects sizes with more than 2 decimal places.
+    // HYPE szDecimals=2 -- HL rejects sizes with more than 2 decimal places.
     // Floor (not round) so we never exceed the caller's balance on a sell.
     const sz = toDecimal(amount).toFixed(2, Decimal.ROUND_DOWN);
     return this.executeSpotOrder(false, sz, spotIndex);
@@ -601,7 +618,7 @@ export class HIP4WalletAdapter {
 
   /**
    * Switch the master account's abstraction mode via the approved agent key.
-   * "u" = unifiedAccount — merges spot and perps into a single balance.
+   * "u" = unifiedAccount -- merges spot and perps into a single balance.
    * Only callable after the agent has been approved (auth.initAuth() done).
    */
   async agentSetAbstraction(

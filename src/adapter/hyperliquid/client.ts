@@ -13,6 +13,7 @@ import type {
   HLCancelResponse,
   HLCandle,
   HLClearinghouseState,
+  HLDelegatorSummary,
   HLExchangeResponse,
   HLExtraAgent,
   HLFill,
@@ -21,8 +22,10 @@ import type {
   HLLedgerUpdate,
   HLModifyAction,
   HLModifyResponse,
+  HLMultiSigSigners,
   HLOrderAction,
   HLOutcomeMeta,
+  HLOutcomeTemplate,
   HLReferralState,
   HLSettledOutcome,
   HLSignature,
@@ -319,6 +322,38 @@ export class HIP4Client {
   }
 
   /**
+   * The live template registry a deployer may instantiate from.
+   * @experimental Deployer surface.
+   */
+  async fetchOutcomeTemplates(): Promise<HLOutcomeTemplate[]> {
+    return this.infoPost<HLOutcomeTemplate[]>({ type: "outcomeTemplates" });
+  }
+
+  /**
+   * Authorized users and threshold of a native multi-sig account.
+   * Returns `null` for an account that has not been converted.
+   * @experimental Deployer surface.
+   */
+  async fetchMultiSigSigners(user: string): Promise<HLMultiSigSigners | null> {
+    return this.infoPost<HLMultiSigSigners | null>({
+      type: "userToMultiSigSigners",
+      user,
+    });
+  }
+
+  /**
+   * Staking balances. `delegated` is what an outcome deployer's stake
+   * requirement is measured against.
+   * @experimental Deployer surface.
+   */
+  async fetchDelegatorSummary(user: string): Promise<HLDelegatorSummary> {
+    return this.infoPost<HLDelegatorSummary>({
+      type: "delegatorSummary",
+      user,
+    });
+  }
+
+  /**
    * Check the maximum builder fee a user has approved for a given builder.
    * Returns the approved fee in tenths of a basis point (e.g. 100 = 0.1%).
    * Returns 0 if no approval exists.
@@ -462,6 +497,24 @@ export class HIP4Client {
     });
   }
 
+  /**
+   * Submit any already-signed action, including a `multiSig` wrapper.
+   * @experimental Deployer surface.
+   */
+  async submitAction(
+    action: Record<string, unknown>,
+    nonce: number,
+    signature: HLSignature,
+    vaultAddress: string | null = null,
+  ): Promise<{ status: string; response?: unknown }> {
+    return this.exchangePost({
+      action,
+      nonce,
+      signature,
+      vaultAddress,
+    });
+  }
+
   // -- WebSocket subscriptions -----------------------------------------------
 
   private ws: WebSocket | null = null;
@@ -473,7 +526,7 @@ export class HIP4Client {
   /**
    * Subscriber count per subscribe message. Multiple consumers can subscribe
    * with an identical payload (e.g. several price feeds all on `allMids`) and
-   * share one wire subscription — the wire subscribe is sent only by the
+   * share one wire subscription -- the wire subscribe is sent only by the
    * first, and the wire unsubscribe only by the last one to leave. Without
    * this, the first consumer's unsubscribe silently killed the stream for
    * every remaining subscriber.
@@ -496,7 +549,7 @@ export class HIP4Client {
     const responseChannel = options?.responseChannel ?? subscription.type;
     this.ensureWs();
 
-    // Send subscribe to HL only for the first subscriber of this payload —
+    // Send subscribe to HL only for the first subscriber of this payload --
     // duplicates just bump the refcount and share the wire subscription.
     const subMsg = JSON.stringify({ method: "subscribe", subscription });
     const refs = this.wsSubRefCounts.get(subMsg) ?? 0;

@@ -7,6 +7,13 @@
 export interface HLOutcomeMeta {
   outcomes: HLOutcome[];
   questions: HLQuestion[];
+  /**
+   * Active outcome deployers and the venue each deploys under.
+   * @experimental Deployer surface.
+   */
+  deployers?: HLDeployerEntry[];
+  /** Protocol-wide fee scale, as a decimal string. @experimental */
+  feeScale?: string;
 }
 
 export interface HLOutcome {
@@ -16,6 +23,10 @@ export interface HLOutcome {
   sideSpecs: HLSideSpec[];
   /** Quote token symbol. Optional on the wire; SDK fetch helpers default to "USDH" when absent. */
   quoteToken?: string;
+  /** Venue of the deployer that registered it. Absent for protocol outcomes. @experimental */
+  venue?: string | null;
+  /** Fee scale this outcome was deployed with, as a decimal string. @experimental */
+  deployerFeeScale?: string;
 }
 
 export interface HLSideSpec {
@@ -610,8 +621,10 @@ export interface HLExtraAgent {
 // -- User role -------------------------------------------------------------
 
 export interface HLUserRoleResponse {
-  /** Role assigned to the address by Hyperliquid (e.g. "user", "subAccount", "missing"). */
+  /** Role assigned to the address by Hyperliquid (e.g. "user", "agent", "subAccount", "missing"). */
   role?: string;
+  /** Present when `role === "agent"`: the master account the agent acts for. */
+  data?: { user?: string };
 }
 
 // -- Account abstraction mode -----------------------------------------------
@@ -718,4 +731,75 @@ export function normalizeSignature(sig: HLSignature | string): HLSignature {
     return splitHexSignature(sig);
   }
   return sig;
+}
+
+// -- Deployer surface (outcomeMeta.deployers, outcomeTemplates) --------------
+//
+// Everything below is @experimental: the HIP-4 deployer surface is not
+// finalised and these shapes are read back from the live API rather than a
+// published schema.
+
+/** One active outcome deployer, as listed by `outcomeMeta.deployers`. @experimental */
+export interface HLDeployerEntry {
+  /** Master account that holds the stake. Lowercase on the wire. */
+  deployer: string;
+  /** 2 to 4 lowercase letters, globally unique and never released. */
+  venue: string;
+}
+
+/** Role a template plays in the registry. @experimental */
+export type HLTemplateRoleKind =
+  | "standaloneOutcome"
+  | "question"
+  | "questionOutcome";
+
+/**
+ * A template's role, which arrives in two shapes: the bare string
+ * `"question"` for a container template, or a single-key object.
+ * @experimental
+ */
+export type HLTemplateRole =
+  | "question"
+  | "standaloneOutcome"
+  | "questionOutcome"
+  | {
+      standaloneOutcome?: { sideNames?: string[] };
+      question?: Record<string, unknown>;
+      questionOutcome?: { parent?: string };
+    };
+
+/** Value grammar the registry declares for a keyword. @experimental */
+export type HLKeywordHint =
+  | "date"
+  | "dateTime"
+  | "hlPerp"
+  | "shortString"
+  | "string"
+  | "uDecimal"
+  | "uInt";
+
+/** One entry of the `outcomeTemplates` registry. @experimental */
+export interface HLOutcomeTemplate {
+  id: string;
+  role: HLTemplateRole;
+  /** May carry `{keyword}` placeholders. */
+  name: string;
+  /** May carry `{keyword}` placeholders. */
+  description: string;
+  /** `[keyword, hint]` pairs, hint as published. */
+  keywords: Array<[string, string]>;
+}
+
+/** Response of `userToMultiSigSigners`. `null` when the account is not converted. @experimental */
+export interface HLMultiSigSigners {
+  authorizedUsers: string[];
+  threshold: number;
+}
+
+/** Response of `delegatorSummary`. Amounts are HYPE decimal strings. @experimental */
+export interface HLDelegatorSummary {
+  delegated: string;
+  undelegated: string;
+  totalPendingWithdrawal: string;
+  nPendingWithdrawals: number;
 }

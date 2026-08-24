@@ -59,9 +59,24 @@ export function createMockClient(): MockedClient {
     fetchUserFillsByTime: vi.fn().mockResolvedValue(FILLS),
     fetchFrontendOpenOrders: vi.fn().mockResolvedValue(FRONTEND_ORDERS),
 
+    // Deployer surface
+    fetchUserRole: vi.fn().mockResolvedValue({ role: "user" }),
+    fetchUserAbstraction: vi.fn().mockResolvedValue("disabled"),
+    fetchExtraAgents: vi.fn().mockResolvedValue([]),
+    fetchOutcomeTemplates: vi.fn().mockResolvedValue([]),
+    fetchMultiSigSigners: vi.fn().mockResolvedValue(null),
+    fetchDelegatorSummary: vi.fn().mockResolvedValue({
+      delegated: "0.0",
+      undelegated: "0.0",
+      totalPendingWithdrawal: "0.0",
+      nPendingWithdrawals: 0,
+    }),
+
     // Exchange endpoints
     placeOrder: vi.fn().mockResolvedValue(FILLED_RESPONSE),
     cancelOrder: vi.fn().mockResolvedValue({ status: "ok" as const }),
+    submitAction: vi.fn().mockResolvedValue({ status: "ok" as const }),
+    submitUserSignedAction: vi.fn().mockResolvedValue({ status: "ok" as const }),
 
     // Logger (no-op)
     log: vi.fn(),
