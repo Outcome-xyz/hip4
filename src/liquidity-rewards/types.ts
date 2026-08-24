@@ -32,7 +32,7 @@ export type LiquidityRewardsChampionMarket = {
   /** Outcome id from Hyperliquid outcomeMeta. */
   hyperliquidOutcomeId: number;
   /**
-   * Blended cutoff mid used to decide eligibility (1%–99% band).
+   * Blended cutoff mid used to decide eligibility (1%-99% band).
    * The API does not always include it.
    */
   eligibilityMid?: string;

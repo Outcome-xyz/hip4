@@ -75,7 +75,7 @@ export type TeamsEligibility = EpochBase & {
   subject: "teams";
   /** Orders/trades only count toward rewards when they use this builder code. */
   builderCode: string;
-  /** Winner books inside the 1%–99% eligibility band on the scoring day. */
+  /** Winner books inside the 1%-99% eligibility band on the scoring day. */
   eligible: LiquidityRewardsChampionMarket[];
   /** Winner books outside the band - displayed but not earning. */
   ineligible: LiquidityRewardsChampionMarket[];

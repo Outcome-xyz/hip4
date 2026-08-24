@@ -168,7 +168,7 @@ const hip4 = createHIP4Adapter({
   testnet: true,
   // Builder fee - collected on every order placed by this adapter
   builderAddress: "0xYourBuilderAddress",
-  builderFee: 100, // 0.1% (tenths of a basis point, 0–1000)
+  builderFee: 100, // 0.1% (tenths of a basis point, 0-1000)
   logger: (level, msg, data) => console.log(level, msg, data),
 });
 ```
@@ -214,7 +214,7 @@ const matches = await s1.checkEligibility({ subject: "matches" });
 const rewards = await s1.checkRewards({ wallet: "0x...", date: "2026-06-08" });
 ```
 
-Reward mechanics: [World Cup Outcome Rewards](https://docs.monarch.fast/world-cup-outcome-rewards#reward-program-1-champion-market) · Upstream API: [World Cup API](https://docs.monarch.fast/world-cup-api)
+Reward mechanics: [World Cup Outcome Rewards](https://docs.monarch.fast/world-cup-outcome-rewards#reward-program-1-champion-market) - Upstream API: [World Cup API](https://docs.monarch.fast/world-cup-api)
 
 ## Deployer (experimental)
 

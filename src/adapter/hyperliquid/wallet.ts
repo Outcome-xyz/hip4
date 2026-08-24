@@ -144,7 +144,7 @@ export interface SendSpotTokenToEvmParams {
   tokenId: string;
   /** Decimal amount in the token's display decimals, as a string. */
   amount: string;
-  /** HYPE bypasses index-derived address at `0x2222…2222`. */
+  /** HYPE bypasses index-derived address at `0x2222...2222`. */
   isHype?: boolean;
 }
 
@@ -380,7 +380,7 @@ export class HIP4WalletAdapter {
    * cheaper + faster than sendAsset-to-HyperEVM + bridge).
    *
    * HYPE is the documented exception: callers must set `isHype: true` so
-   * the destination resolves to the hardcoded `0x2222…2222` slot rather
+   * the destination resolves to the hardcoded `0x2222...2222` slot rather
    * than the index-derived address.
    */
   async sendSpotTokenToEvm(

@@ -4,7 +4,7 @@
 // Every Hyperliquid spot token has a "system address" on HyperCore that acts
 // as the sink for Core → HyperEVM transfers via `spotSend`. The address is
 // `0x20` + 19 bytes big-endian token index. HYPE is the one documented
-// exception at `0x2222…2222`.
+// exception at `0x2222...2222`.
 //
 // Reference: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/hypercore-less-than-greater-than-hyperevm-transfers
 //
