@@ -99,7 +99,10 @@ export function formatPredictionPrice(price: number): string {
   } else {
     formatted = price.toFixed(4);
   }
-  return formatted.replace(/\.?0+$/, "");
+  // `stripZeros` guards on a decimal point being present. Applying the bare
+  // /\.?0+$/ here ate the trailing zeros of the integers the >= 1000 branch
+  // produces, so "1000" became "1".
+  return stripZeros(formatted);
 }
 
 function mapTif(
