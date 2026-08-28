@@ -21,16 +21,18 @@
     ]
   },
   "l1ActionHash": {
-    "registerStandaloneOutcome": "0x9f1c960611c37543ce6f63e533ac1d0a27709e22e723052c1a15ee439547e7da",
-    "registerQuestion": "0x34331ed0c8b866a35ac7b1c61fe71a37419fc4294f8136fbe9eee96a0eb28d33",
-    "settleOutcome": "0xba7e301bccfb7825979c11f4fb53ad7ec7d6d3402e1e70ab38804d3cdfd2af37",
-    "settleQuestion": "0x83e9564c529f0e43cdb26f387bba1832d4c4504af8c1dee627d84b302f269964",
+    "registerStandaloneOutcome": "0xe76ca1311e7a15df0ad87a5dab3a02b047d23837ff001d480d5f849fded4a9c6",
+    "registerQuestion": "0x3d1f7e8e0409bf566bdf0201478aa6fe8293ed4dbb9d30b07c1b32230aaa99d5",
+    "registerAndAssociateNamedOutcome": "0xda72d2939a491585c4781553fa6881e045207edbe320ee31c58e9e767768dce6",
+    "setSubDeployers": "0x13e98e1ec9d18a7374ffd6efd908d9b8597bb702d8fabe4c320569b96a5993fa",
+    "settleOutcome": "0x46bc607e52ce7d6bbb25329f33fc9416046efc06aecad3cb8c03b11491ab7bb6",
+    "settleQuestion": "0x8bf875b43394c89e151367f995a9735cc0073c4c39c65724cb11cf9f3123c655",
     "activate": "0xb6527b4ba1d06d7884f85a2f0c165fde59becd3bc7f8725bc0f481e3a2c7f1cd",
-    "deactivate": "0x09347b89957d861d9d2a55f2aed6d87579e1c7c4b5e9f1d59de7367a0aa91003"
+    "deactivate": "0xe91d6e3ccf382a7ae37e78d8e6dadf2f168cbedee74c0f2b984b2b8561bc008f"
   },
   "multiSigInnerL1Hash": {
-    "registerStandaloneOutcome": "0x8031f9b115d7b45c89d172b5a9a79ed5c8ba671244eb06f7c34cb9196b1013d3",
-    "settleQuestion": "0xd6bc76ae44958f2d2b42fcdfee90a23aaa7a6d5b286fa8fa2343b0967f6ca2c6",
+    "registerStandaloneOutcome": "0xaae5cb534172068ed0db7195034da985961d06bb5af93c984a98341b80bf3f31",
+    "settleQuestion": "0x396ad68ec562d8908fe49611b660449263c64ff7a0b79d01a8e07221220e65e9",
     "activate": "0x32e4f02e2a5749f37081f1990e55fa5b576ae623adaecc89a5bc6edd453f3203"
   },
   "multiSigEnvelopeHash": {
@@ -41,7 +43,7 @@
     "cDeposit": "0xec57d94f5a6a6a10c8225dcbdb68b4518213741677eb85680c7b92b3ed2e8044",
     "cWithdraw": "0xb19b435e5d6963e729817a3ef4a9f5eb57acbb33cacde7b1040368012e8da91e",
     "userSetAbstractionWire": "0x4aa8cf30a5f4611645ac46441cc2722a4e52d745890a5f6a66bf2e5935ad0d16",
-    "registerStandaloneOutcome": "0xa58194e3330a17e38f66c8ab7ff3637032e9e02e9a7f41096af62de6fbd0056d"
+    "registerStandaloneOutcome": "0xb729b2335f85dbb74da2a836f95f989f59e7896061b6a41d41449e173a371dcf"
   },
   "userSignedPayload": {
     "approveAgent": {

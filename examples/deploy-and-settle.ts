@@ -22,6 +22,8 @@ import {
 } from "../src";
 
 const TEMPLATE_ID = "binaryPrice4";
+/* The venue the master activated with; every outcomeDeploy names it. */
+const VENUE = process.env.DEPLOYER_VENUE ?? "zzz";
 
 async function main() {
   const key = process.env.AGENT_PRIVATE_KEY;
@@ -58,6 +60,7 @@ async function main() {
   assertTemplateInstance(template, values);
 
   const registered = await adapter.deployer.registerStandaloneOutcome({
+    venue: VENUE,
     templateId: TEMPLATE_ID,
     values,
     deployerFeeScale: "0",

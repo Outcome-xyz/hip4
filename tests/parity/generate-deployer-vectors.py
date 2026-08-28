@@ -73,8 +73,9 @@ def user_signed(action_type, **fields):
 
 
 REGISTER_STANDALONE = {
-    "type": "spotDeploy",
-    "outcome": {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
         "registerStandaloneOutcomeFromTemplate": {
             "id": "binaryPrice4",
             "keywordToValue": [
@@ -90,8 +91,9 @@ REGISTER_STANDALONE = {
 }
 
 REGISTER_QUESTION = {
-    "type": "spotDeploy",
-    "outcome": {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
         "registerQuestionFromTemplate": {
             "questionTemplateInstance": {
                 "id": "sportsContestResult",
@@ -107,8 +109,9 @@ REGISTER_QUESTION = {
 }
 
 SETTLE_OUTCOME = {
-    "type": "spotDeploy",
-    "outcome": {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
         "settleOutcome": {
             "outcome": 13065,
             "settleFraction": "1",
@@ -134,8 +137,9 @@ def named_settlement(outcome_id, fraction):
 
 
 SETTLE_QUESTION = {
-    "type": "spotDeploy",
-    "outcome": {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
         "settleQuestion2": {
             "question": 182,
             "outcomeSettlements": [
@@ -149,7 +153,32 @@ SETTLE_QUESTION = {
 }
 
 ACTIVATE = {"type": "activateOutcomeDeployer", "activate": {"venueName": "zzz"}}
-DEACTIVATE = {"type": "activateOutcomeDeployer", "isDeactivate": True}
+DEACTIVATE = {"type": "activateOutcomeDeployer", "deactivate": None}
+
+REGISTER_ASSOCIATE = {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
+        "registerAndAssociateNamedOutcomeFromTemplate": {
+            "question": 182,
+            "namedOutcomeTemplateInstance": {
+                "id": "sportsContestParticipant",
+                "keywordToValue": [["participant", "Spain"]],
+            },
+        }
+    },
+}
+
+SET_SUB_DEPLOYERS = {
+    "type": "outcomeDeploy",
+    "venue": "zzz",
+    "operation": {
+        "setSubDeployers": [
+            {"variant": "settleOutcome", "user": AGENT, "allowed": True},
+            {"variant": "settleQuestion", "user": LEADER, "allowed": False},
+        ]
+    },
+}
 
 USER_ACTIONS = {
     "approveAgent": user_signed("approveAgent", agentAddress=AGENT, agentName="poc"),
@@ -218,6 +247,8 @@ print(
             "l1ActionHash": {
                 "registerStandaloneOutcome": h(REGISTER_STANDALONE),
                 "registerQuestion": h(REGISTER_QUESTION),
+                "registerAndAssociateNamedOutcome": h(REGISTER_ASSOCIATE),
+                "setSubDeployers": h(SET_SUB_DEPLOYERS),
                 "settleOutcome": h(SETTLE_OUTCOME),
                 "settleQuestion": h(SETTLE_QUESTION),
                 "activate": h(ACTIVATE),

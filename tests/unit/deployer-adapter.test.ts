@@ -98,6 +98,7 @@ describe("L1 submission", () => {
       response: { data: { statuses: [{ error: "incorrect deployer" }] } },
     });
     const result = await deployer.registerStandaloneOutcome({
+      venue: "zzz",
       templateId: "binaryPrice4",
       values: { perp: "BTC" },
     });
@@ -130,9 +131,11 @@ describe("settlement by id", () => {
     const { client, deployer } = setup();
     await deployer.settleOutcome({ outcomeId: 13065, settleFraction: "1" });
     const [action] = client.submitAction.mock.calls[0] as [
-      { outcome: { settleOutcome: Record<string, unknown> } },
+      { type: string; venue: string; operation: { settleOutcome: Record<string, unknown> } },
     ];
-    expect(action.outcome.settleOutcome).toEqual({
+    expect(action.type).toBe("outcomeDeploy");
+    expect(action.venue).toBe("zzz");
+    expect(action.operation.settleOutcome).toEqual({
       outcome: 13065,
       settleFraction: "1",
       details: "",
@@ -155,10 +158,11 @@ describe("settlement by id", () => {
     const { client, deployer } = setup();
     await deployer.settleQuestion({ questionId: 182, winner: 7004 });
     const [action] = client.submitAction.mock.calls[0] as [
-      { outcome: { settleQuestion2: { outcomeSettlements: Array<{ outcome: number }> } } },
+      { venue: string; operation: { settleQuestion2: { outcomeSettlements: Array<{ outcome: number }> } } },
     ];
+    expect(action.venue).toBe("zzz");
     expect(
-      action.outcome.settleQuestion2.outcomeSettlements.map((s) => s.outcome),
+      action.operation.settleQuestion2.outcomeSettlements.map((s) => s.outcome),
     ).toEqual([7004]);
   });
 });

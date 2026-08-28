@@ -4,7 +4,7 @@
 // @experimental Exercised end to end on testnet, 19 Aug 2026, against a 2 of 3
 // master that is also an active HIP-4 outcome deployer: `approveAgent`,
 // `userSetAbstraction`, `convertToMultiSigUser`, `tokenDelegate` and
-// `cDeposit` through the quorum, plus an L1 `spotDeploy` registration.
+// `cDeposit` through the quorum, plus an L1 `outcomeDeploy` registration.
 //
 // The shape of the thing:
 //
@@ -108,7 +108,7 @@ export interface MultiSigInnerParams {
 }
 
 /**
- * One authorised user's signature over an L1 action, such as `spotDeploy` or
+ * One authorised user's signature over an L1 action, such as `outcomeDeploy` or
  * `activateOutcomeDeployer`.
  *
  * Signed over the array `[multiSigUser, outerSigner, action]` on the phantom

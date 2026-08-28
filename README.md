@@ -123,10 +123,12 @@ await hip4.initialize();
 | `setSigner(signer)`                          | -        | Agent key, or a leader for multi-sig      |
 | `fetchTemplates()`                           | -        | Live `outcomeTemplates` registry          |
 | `fetchSnapshot(master)`                      | -        | Venue, stake, agents, multi-sig, limits   |
-| `registerStandaloneOutcome(params)`          | L1 agent | Deploy a two-sided market from a template |
-| `registerQuestion(params)`                   | L1 agent | Deploy a question and its named outcomes  |
-| `settleOutcome({ outcomeId, settleFraction })` | L1 agent | Settle a standalone outcome             |
+| `registerStandaloneOutcome({ venue, ... })`  | L1 agent | Deploy a two-sided market from a template |
+| `registerQuestion({ venue, ... })`           | L1 agent | Deploy a question and its named outcomes  |
+| `registerAndAssociateNamedOutcome({ venue, question, namedOutcome })` | L1 agent | Add a named outcome to a live question |
+| `settleOutcome({ outcomeId, settleFraction })` | L1 agent | Settle one outcome (venue read from meta) |
 | `settleQuestion({ questionId, winner })`     | L1 agent | Settle every unsettled named outcome      |
+| `setSubDeployers({ venue, entries })`        | L1 agent | Grant or revoke sub-deployer variants     |
 | `activate(venueName)` / `deactivate()`       | L1 agent | Claim a venue (one-way door)              |
 | `approveAgent({ agentAddress, agentName })`  | EIP-712  | Approve an API wallet                     |
 | `convertToMultiSigUser(params)`              | EIP-712  | Convert the master to native multi-sig    |
@@ -231,7 +233,7 @@ const snapshot = await adapter.deployer.fetchSnapshot(master);
 
 // Deploy and settle, signed by an approved agent that holds no funds
 adapter.deployer.setSigner(agentSigner);
-await adapter.deployer.registerStandaloneOutcome({ templateId: "binaryPrice4", values });
+await adapter.deployer.registerStandaloneOutcome({ venue: "zzz", templateId: "binaryPrice4", values });
 await adapter.deployer.settleOutcome({ outcomeId, settleFraction: "1" });
 ```
 
