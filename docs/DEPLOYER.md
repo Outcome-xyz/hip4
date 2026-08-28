@@ -1,9 +1,11 @@
 # Deployer
 
 > **Experimental.** Everything on this page may change without a major
-> version. HIP-4 deployment, settlement and Hyperliquid native multi-sig have
-> no published schema; the shapes here were read back from the live API and
-> from a testnet run on 18 August 2026.
+> version. Deploy and settle follow Hyperliquid's published
+> [HIP-4 deployer actions](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/hip-4-deployer-actions)
+> reference, checked against testnet on 28 August 2026. Native multi-sig has
+> no published schema; its shapes were read back from the live API and from a
+> testnet run on 18 August 2026.
 
 Registering markets, settling them, approving agents, and running a deployer
 whose stake sits behind a multi-sig.
@@ -17,7 +19,7 @@ master account (holds the stake, 2-of-3 multi-sig)
   v
 agent (holds nothing, cannot move funds)
   |
-  |  spotDeploy / settleOutcome, alone, one signature, no quorum
+  |  outcomeDeploy (register / settle), alone, one signature, no quorum
   v
 Hyperliquid
 ```
@@ -97,12 +99,14 @@ separates what to offer from what a newer id replaced.
 adapter.deployer.setSigner(agentSigner); // an approved agent key
 
 await adapter.deployer.registerStandaloneOutcome({
+  venue: "zzz", // every outcomeDeploy names the deployer's venue
   templateId: "binaryPrice4",
   values,
   deployerFeeScale: "0",
 });
 
 await adapter.deployer.registerQuestion({
+  venue: "zzz",
   question: { templateId: "sportsContestResult", values: questionValues },
   namedOutcomes: [
     { templateId: "sportsContestParticipant", values: { participant: "Brazil" } },
@@ -110,10 +114,33 @@ await adapter.deployer.registerQuestion({
   ],
 });
 
-// settleFraction: "1" pays the first side, "0" the second, between splits
+// add a named outcome to a live question; it inherits the question's fee scale
+await adapter.deployer.registerAndAssociateNamedOutcome({
+  venue: "zzz",
+  question: 182,
+  namedOutcome: { templateId: "sportsContestParticipant", values: { participant: "Spain" } },
+});
+
+// settleFraction: "1" pays the first side, "0" the second. A standalone
+// outcome may split ("0.66"); a question outcome must be exactly "0" or "1".
+// The venue is read from the outcome's own metadata.
 await adapter.deployer.settleOutcome({ outcomeId: 13065, settleFraction: "1" });
 await adapter.deployer.settleQuestion({ questionId: 182, winner: 7004 });
+
+// let another key register and settle on this venue
+await adapter.deployer.setSubDeployers({
+  venue: "zzz",
+  entries: [
+    { variant: "registerStandaloneOutcomeFromTemplate", user: operator, allowed: true },
+    { variant: "settleOutcome", user: operator, allowed: true },
+  ],
+});
 ```
+
+Every deploy and settle action is `{ type: "outcomeDeploy", venue, operation }`.
+The venue is required; a sub-deployer passes the venue of the deployer it acts
+for, and settlements can only target that venue's outcomes. `details` on a
+settlement is always empty. A question takes at most 100 named outcomes.
 
 Settling echoes the outcome's name, description and side names back verbatim,
 so `settleOutcome` reads them from `outcomeMeta` rather than taking them on
@@ -251,7 +278,7 @@ Testnet, 18 August 2026, against a live staked deployer converted to 2 of 3:
 | Deployer status survives conversion           | still active               |
 | `userAbstraction` survives conversion         | `disabled` before and after|
 | Master signs for itself after conversion      | `Multi-sig required`       |
-| `spotDeploy` via the quorum                   | ok                         |
+| deploy via the quorum                         | ok                         |
 | `approveAgent` via the quorum                 | ok                         |
 | Agent deploys alone, no quorum                | ok                         |
 | Agent settles alone, no quorum                | ok                         |
@@ -290,10 +317,12 @@ intermittent, it looks like a flaky exchange, and the Python SDK never hits it
 only because `to_hex` happens to strip leading zeros already.
 
 **Activation is a one-way door.** The stake is committed for the minimum
-staking period. Deactivation is permanent: the account can never activate
-again. The venue name is 2 to 4 lowercase letters, globally unique across
-every deployer including deactivated ones, and never released. Do not spend
-one you want for production on a test.
+staking period of 183 days, and the account must be on Standard abstraction.
+Deactivation needs that period elapsed and no active outcomes, and is
+permanent: the account can never activate again. The venue name is 2 to 4
+lowercase letters, globally unique across every deployer including
+deactivated ones, shared with the perp DEX namespace (`spot` is reserved),
+and never released. Do not spend one you want for production on a test.
 
 **An unfunded address cannot be converted.** It is not an L1 user until the
 exchange has seen it, so "convert while empty" means no stake and no deployer

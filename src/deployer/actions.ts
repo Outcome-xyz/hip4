@@ -25,10 +25,14 @@ import type {
   HLCWithdrawAction,
   HLNetwork,
   HLOutcomeSettlement,
+  HLRegisterAndAssociateNamedOutcomeAction,
   HLRegisterQuestionAction,
   HLRegisterStandaloneOutcomeAction,
+  HLSetSubDeployersAction,
   HLSettleOutcomeAction,
   HLSettleQuestionAction,
+  HLSubDeployerEntry,
+  HLSubDeployerVariant,
   HLTemplateInstance,
   HLTokenDelegateAction,
   HLUserSetAbstractionAction,
@@ -149,9 +153,14 @@ export function hypeToWei(amount: string): number {
 
 /**
  * A venue name: 2 to 4 lowercase letters. Globally unique across every
- * deployer including deactivated ones, and never released once claimed.
+ * deployer including deactivated ones, never released once claimed, and
+ * shared with the perp DEX namespace: `spot` and any live HIP-3 DEX name are
+ * taken. Only `spot` can be refused here; DEX collisions need `perpDexs`.
  */
 export const VENUE_NAME_RE = /^[a-z]{2,4}$/;
+
+/** Question outcomes per question, per the deployer actions reference. */
+export const MAX_QUESTION_OUTCOMES = 100;
 
 export function normalizeVenueName(raw: string): string {
   return raw.trim().toLowerCase();
@@ -162,7 +171,19 @@ export function venueNameError(raw: string): string | null {
   const name = normalizeVenueName(raw);
   if (name === "") return "A venue name is required.";
   if (!VENUE_NAME_RE.test(name)) return "2 to 4 lowercase letters (a to z).";
+  if (name === "spot") return "`spot` is reserved.";
   return null;
+}
+
+/** Validate and normalize the venue every `outcomeDeploy` action carries. */
+function requireVenue(raw: string): string {
+  const problem = venueNameError(raw);
+  if (problem !== null) throw new DeployerError(`Venue: ${problem}`);
+  return normalizeVenueName(raw);
+}
+
+function outcomeDeploy<Op>(venue: string, operation: Op) {
+  return { type: "outcomeDeploy" as const, venue: requireVenue(venue), operation };
 }
 
 // -- Deployer activation ----------------------------------------------------
@@ -170,9 +191,10 @@ export function venueNameError(raw: string): string | null {
 /**
  * Claim a venue and become an active outcome deployer.
  *
- * One-way door. Activation commits the stake for the minimum staking period,
- * deactivation additionally requires no active outcomes and is permanent, and
- * the venue name is reserved forever either way.
+ * One-way door. Activation commits the stake for the minimum staking period
+ * (183 days) and requires Standard account abstraction. Deactivation needs
+ * that period elapsed and no active outcomes, is permanent, and the venue
+ * name stays reserved either way.
  */
 export function buildActivateDeployerAction(
   venueName: string,
@@ -187,7 +209,7 @@ export function buildActivateDeployerAction(
 
 /** Deactivate, permanently. The account can never activate again. */
 export function buildDeactivateDeployerAction(): HLActivateOutcomeDeployerAction {
-  return { type: "activateOutcomeDeployer", isDeactivate: true };
+  return { type: "activateOutcomeDeployer", deactivate: null };
 }
 
 // -- Registration -----------------------------------------------------------
@@ -209,6 +231,8 @@ function templateInstance(
 }
 
 export interface RegisterStandaloneOutcomeParams {
+  /** The deployer's venue. A sub-deployer passes the venue it acts for. */
+  venue: string;
   /** Registry template id, e.g. `"binaryPrice4"`. */
   templateId: string;
   /** One value per keyword the template declares. */
@@ -221,19 +245,18 @@ export interface RegisterStandaloneOutcomeParams {
 export function buildRegisterStandaloneOutcomeAction(
   params: RegisterStandaloneOutcomeParams,
 ): HLRegisterStandaloneOutcomeAction {
-  return {
-    type: "spotDeploy",
-    outcome: {
-      registerStandaloneOutcomeFromTemplate: templateInstance(
-        params.templateId,
-        params.values,
-        params.deployerFeeScale ?? "0",
-      ),
-    },
-  };
+  return outcomeDeploy(params.venue, {
+    registerStandaloneOutcomeFromTemplate: templateInstance(
+      params.templateId,
+      params.values,
+      params.deployerFeeScale ?? "0",
+    ),
+  });
 }
 
 export interface RegisterQuestionParams {
+  /** The deployer's venue. A sub-deployer passes the venue it acts for. */
+  venue: string;
   /** The container template and its values. */
   question: { templateId: string; values: Record<string, string> };
   /**
@@ -255,21 +278,66 @@ export function buildRegisterQuestionAction(
   if (params.namedOutcomes.length === 0) {
     throw new DeployerError("A question needs at least one named outcome");
   }
-  return {
-    type: "spotDeploy",
-    outcome: {
-      registerQuestionFromTemplate: {
-        questionTemplateInstance: templateInstance(
-          params.question.templateId,
-          params.question.values,
-          params.deployerFeeScale ?? "0",
-        ),
-        namedOutcomeTemplateInstances: params.namedOutcomes.map((o) =>
-          templateInstance(o.templateId, o.values),
-        ),
-      },
+  if (params.namedOutcomes.length > MAX_QUESTION_OUTCOMES) {
+    throw new DeployerError(
+      `A question takes at most ${MAX_QUESTION_OUTCOMES} named outcomes, got ${params.namedOutcomes.length}`,
+    );
+  }
+  return outcomeDeploy(params.venue, {
+    registerQuestionFromTemplate: {
+      questionTemplateInstance: templateInstance(
+        params.question.templateId,
+        params.question.values,
+        params.deployerFeeScale ?? "0",
+      ),
+      namedOutcomeTemplateInstances: params.namedOutcomes.map((o) =>
+        templateInstance(o.templateId, o.values),
+      ),
     },
-  };
+  });
+}
+
+export interface RegisterAndAssociateNamedOutcomeParams {
+  /** The deployer's venue. A sub-deployer passes the venue it acts for. */
+  venue: string;
+  /** A live question of this venue, deployed from a template. */
+  question: number;
+  /** A question-outcome template whose parent is the question's template. */
+  namedOutcome: { templateId: string; values: Record<string, string> };
+}
+
+/**
+ * Add one named outcome to a live question. It inherits the question's fee
+ * scale, and holders of the fallback's Yes receive an equal balance of the
+ * new outcome's Yes so existing "other" positions keep their meaning.
+ */
+export function buildRegisterAndAssociateNamedOutcomeAction(
+  params: RegisterAndAssociateNamedOutcomeParams,
+): HLRegisterAndAssociateNamedOutcomeAction {
+  return outcomeDeploy(params.venue, {
+    registerAndAssociateNamedOutcomeFromTemplate: {
+      question: requireIndex(params.question, "question"),
+      namedOutcomeTemplateInstance: templateInstance(
+        params.namedOutcome.templateId,
+        params.namedOutcome.values,
+      ),
+    },
+  });
+}
+
+function requireVariant(variant: string): HLSubDeployerVariant {
+  if (!SUB_DEPLOYER_VARIANTS.has(variant)) {
+    throw new DeployerError(`Unknown sub-deployer variant: ${variant}`);
+  }
+  return variant as HLSubDeployerVariant;
+}
+
+function requireIndex(value: number, what: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new DeployerError(`${what} must be a non-negative integer, got ${value}`);
+  }
+  return n;
 }
 
 // -- Settlement -------------------------------------------------------------
@@ -285,12 +353,13 @@ export interface SettleableOutcome {
 /**
  * One outcome's settlement. `settleFraction` is the share paid to the first
  * side: `"1"` pays side 0 in full, `"0"` pays side 1, and a value between
- * splits the pool.
+ * splits the pool. Only a standalone outcome may split; question outcomes
+ * settle to exactly `"0"` or `"1"`. `details` is always empty: the exchange
+ * refuses anything else.
  */
 export function buildOutcomeSettlement(
   outcome: SettleableOutcome,
   settleFraction: string,
-  details = "",
 ): HLOutcomeSettlement {
   const sides = outcome.sideSpecs.map((s) => String(s.name));
   if (sides.length !== 2) {
@@ -301,27 +370,26 @@ export function buildOutcomeSettlement(
   return {
     outcome: Number(outcome.outcome),
     settleFraction: normalizeSettleFraction(settleFraction),
-    details,
+    details: "",
     nameAndDescription: [String(outcome.name), String(outcome.description)],
     sideNames: [sides[0] as string, sides[1] as string],
   };
 }
 
-/** Settle a standalone outcome. */
+/** Settle one outcome of the venue. */
 export function buildSettleOutcomeAction(
+  venue: string,
   outcome: SettleableOutcome,
   settleFraction: string,
-  details = "",
 ): HLSettleOutcomeAction {
-  return {
-    type: "spotDeploy",
-    outcome: {
-      settleOutcome: buildOutcomeSettlement(outcome, settleFraction, details),
-    },
-  };
+  return outcomeDeploy(venue, {
+    settleOutcome: buildOutcomeSettlement(outcome, settleFraction),
+  });
 }
 
 export interface SettleQuestionParams {
+  /** The venue the question belongs to. */
+  venue: string;
   question: {
     question: number;
     name: string;
@@ -333,7 +401,6 @@ export interface SettleQuestionParams {
   outcomes: SettleableOutcome[];
   /** The named outcome that resolves Yes. Every other one resolves No. */
   winner: number;
-  details?: string;
 }
 
 /**
@@ -363,25 +430,54 @@ export function buildSettleQuestionAction(
     );
   }
 
-  return {
-    type: "spotDeploy",
-    outcome: {
-      settleQuestion2: {
-        question: Number(question.question),
-        outcomeSettlements: remaining.map((id) =>
-          buildOutcomeSettlement(
-            byId.get(id) as SettleableOutcome,
-            id === Number(winner) ? "1" : "0",
-            params.details ?? "",
-          ),
+  return outcomeDeploy(params.venue, {
+    settleQuestion2: {
+      question: Number(question.question),
+      outcomeSettlements: remaining.map((id) =>
+        buildOutcomeSettlement(
+          byId.get(id) as SettleableOutcome,
+          id === Number(winner) ? "1" : "0",
         ),
-        nameAndDescription: [
-          String(question.name),
-          String(question.description),
-        ],
-      },
+      ),
+      nameAndDescription: [String(question.name), String(question.description)],
     },
-  };
+  });
+}
+
+// -- Sub-deployers ----------------------------------------------------------
+
+const SUB_DEPLOYER_VARIANTS: ReadonlySet<string> = new Set<HLSubDeployerVariant>([
+  "registerStandaloneOutcomeFromTemplate",
+  "registerQuestionFromTemplate",
+  "registerAndAssociateNamedOutcomeFromTemplate",
+  "settleOutcome",
+  "settleQuestion",
+]);
+
+export interface SetSubDeployersParams {
+  venue: string;
+  /** Each entry adds (`allowed: true`) or removes a user for one variant. */
+  entries: HLSubDeployerEntry[];
+}
+
+/**
+ * Grant or revoke sub-deployer permissions. A granted user sends that variant
+ * on the deployer's behalf: registrations land under the deployer's venue and
+ * count toward its limits, settlements may only target its outcomes.
+ */
+export function buildSetSubDeployersAction(
+  params: SetSubDeployersParams,
+): HLSetSubDeployersAction {
+  if (params.entries.length === 0) {
+    throw new DeployerError("At least one sub-deployer entry is required");
+  }
+  return outcomeDeploy(params.venue, {
+    setSubDeployers: params.entries.map((e) => ({
+      variant: requireVariant(e.variant),
+      user: lowerAddress(e.user, "user"),
+      allowed: Boolean(e.allowed),
+    })),
+  });
 }
 
 // -- Account actions --------------------------------------------------------
@@ -428,6 +524,10 @@ export interface ConvertToMultiSigUserParams {
  * never seen is not an L1 user and has nothing to convert. At most 10
  * authorised users. After conversion every action from the account must go
  * through the wrapper, HyperEVM excepted.
+ *
+ * An empty `authorizedUsers` (sent through the quorum) converts the account
+ * back to a normal user. The threshold to send with it is not published; `0`
+ * is accepted here and has not been measured live.
  */
 export function buildConvertToMultiSigUserAction(
   params: ConvertToMultiSigUserParams,
@@ -435,22 +535,20 @@ export function buildConvertToMultiSigUserAction(
   const users = params.authorizedUsers.map((u) =>
     lowerAddress(u, "authorizedUser"),
   );
-  if (users.length === 0) {
-    throw new DeployerError("At least one authorized user is required");
-  }
   if (users.length > 10) {
     throw new DeployerError("At most 10 authorized users are allowed");
   }
   if (new Set(users).size !== users.length) {
     throw new DeployerError("Authorized users must be distinct");
   }
+  const min = users.length === 0 ? 0 : 1;
   if (
     !Number.isInteger(params.threshold) ||
-    params.threshold < 1 ||
+    params.threshold < min ||
     params.threshold > users.length
   ) {
     throw new DeployerError(
-      `Threshold must be between 1 and ${users.length}, got ${params.threshold}`,
+      `Threshold must be between ${min} and ${users.length}, got ${params.threshold}`,
     );
   }
   return {

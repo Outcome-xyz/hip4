@@ -5,8 +5,10 @@ import {
   buildCDepositAction,
   buildConvertToMultiSigUserAction,
   buildDeactivateDeployerAction,
+  buildRegisterAndAssociateNamedOutcomeAction,
   buildRegisterQuestionAction,
   buildRegisterStandaloneOutcomeAction,
+  buildSetSubDeployersAction,
   buildSettleOutcomeAction,
   buildSettleQuestionAction,
   buildUserSetAbstractionAction,
@@ -78,6 +80,7 @@ describe("venue names", () => {
     expect(venueNameError("abcde")).not.toBeNull();
     expect(venueNameError("a1")).not.toBeNull();
     expect(venueNameError("")).not.toBeNull();
+    expect(venueNameError("spot")).not.toBeNull();
   });
 });
 
@@ -89,10 +92,10 @@ describe("activation", () => {
     });
   });
 
-  it("deactivates with the flag form", () => {
+  it("deactivates with the null enum variant", () => {
     expect(buildDeactivateDeployerAction()).toEqual({
       type: "activateOutcomeDeployer",
-      isDeactivate: true,
+      deactivate: null,
     });
   });
 });
@@ -100,10 +103,11 @@ describe("activation", () => {
 describe("registration", () => {
   it("builds a standalone registration with sorted keywords", () => {
     const action = buildRegisterStandaloneOutcomeAction({
+      venue: "zzz",
       templateId: "binaryPrice4",
       values: { time: "20260901-1200", perp: "BTC", threshold: "50000" },
     });
-    expect(action.outcome.registerStandaloneOutcomeFromTemplate).toEqual({
+    expect(action.operation.registerStandaloneOutcomeFromTemplate).toEqual({
       id: "binaryPrice4",
       keywordToValue: [
         ["perp", "BTC"],
@@ -116,17 +120,21 @@ describe("registration", () => {
 
   it("keeps the action key order the exchange hashes", () => {
     const action = buildRegisterStandaloneOutcomeAction({
+      venue: "zzz",
       templateId: "binaryPrice4",
       values: { perp: "BTC" },
     });
-    expect(Object.keys(action)).toEqual(["type", "outcome"]);
+    expect(Object.keys(action)).toEqual(["type", "venue", "operation"]);
+    expect(action.type).toBe("outcomeDeploy");
+    expect(action.venue).toBe("zzz");
     expect(
-      Object.keys(action.outcome.registerStandaloneOutcomeFromTemplate),
+      Object.keys(action.operation.registerStandaloneOutcomeFromTemplate),
     ).toEqual(["id", "keywordToValue", "deployerFeeScale"]);
   });
 
   it("carries the fee scale on the question only, not its named outcomes", () => {
     const action = buildRegisterQuestionAction({
+      venue: "zzz",
       question: { templateId: "sportsContestResult", values: { sport: "football" } },
       namedOutcomes: [
         { templateId: "sportsContestParticipant", values: { participant: "A" } },
@@ -134,7 +142,7 @@ describe("registration", () => {
       ],
       deployerFeeScale: "1.50",
     });
-    const inner = action.outcome.registerQuestionFromTemplate;
+    const inner = action.operation.registerQuestionFromTemplate;
     expect(inner.questionTemplateInstance.deployerFeeScale).toBe("1.5");
     expect(inner.namedOutcomeTemplateInstances[0]?.deployerFeeScale).toBeUndefined();
     expect(inner.namedOutcomeTemplateInstances.map((o) => o.id)).toEqual([
@@ -143,9 +151,49 @@ describe("registration", () => {
     ]);
   });
 
+  it("refuses a venue the exchange would reject", () => {
+    expect(() =>
+      buildRegisterStandaloneOutcomeAction({
+        venue: "spot",
+        templateId: "binaryPrice4",
+        values: { perp: "BTC" },
+      }),
+    ).toThrow(DeployerError);
+  });
+
+  it("refuses more than 100 named outcomes", () => {
+    expect(() =>
+      buildRegisterQuestionAction({
+        venue: "zzz",
+        question: { templateId: "q", values: {} },
+        namedOutcomes: Array.from({ length: 101 }, () => ({
+          templateId: "o",
+          values: {},
+        })),
+      }),
+    ).toThrow(DeployerError);
+  });
+
+  it("adds a named outcome to a live question without a fee scale", () => {
+    const action = buildRegisterAndAssociateNamedOutcomeAction({
+      venue: "zzz",
+      question: 182,
+      namedOutcome: { templateId: "sportsContestParticipant", values: { participant: "Spain" } },
+    });
+    expect(Object.keys(action)).toEqual(["type", "venue", "operation"]);
+    const op = action.operation.registerAndAssociateNamedOutcomeFromTemplate;
+    expect(Object.keys(op)).toEqual(["question", "namedOutcomeTemplateInstance"]);
+    expect(op.question).toBe(182);
+    expect(op.namedOutcomeTemplateInstance).toEqual({
+      id: "sportsContestParticipant",
+      keywordToValue: [["participant", "Spain"]],
+    });
+  });
+
   it("refuses a question with no named outcomes", () => {
     expect(() =>
       buildRegisterQuestionAction({
+        venue: "zzz",
         question: { templateId: "sportsContestResult", values: {} },
         namedOutcomes: [],
       }),
@@ -155,15 +203,15 @@ describe("registration", () => {
 
 describe("settlement", () => {
   it("echoes name, description and side names back verbatim", () => {
-    const action = buildSettleOutcomeAction(OUTCOME, "1");
-    expect(action.outcome.settleOutcome).toEqual({
+    const action = buildSettleOutcomeAction("zzz", OUTCOME, "1");
+    expect(action.operation.settleOutcome).toEqual({
       outcome: 13065,
       settleFraction: "1",
       details: "",
       nameAndDescription: [OUTCOME.name, OUTCOME.description],
       sideNames: ["template:Yes", "template:No"],
     });
-    expect(Object.keys(action.outcome.settleOutcome)).toEqual([
+    expect(Object.keys(action.operation.settleOutcome)).toEqual([
       "outcome",
       "settleFraction",
       "details",
@@ -174,13 +222,14 @@ describe("settlement", () => {
 
   it("refuses an outcome that does not have exactly two sides", () => {
     expect(() =>
-      buildSettleOutcomeAction({ ...OUTCOME, sideSpecs: [{ name: "Yes" }] }, "1"),
+      buildSettleOutcomeAction("zzz", { ...OUTCOME, sideSpecs: [{ name: "Yes" }] }, "1"),
     ).toThrow(DeployerError);
   });
 
   it("settles a question with the winner at 1 and the rest at 0", () => {
     const outcomes = [7003, 7004, 7005].map((id) => ({ ...OUTCOME, outcome: id }));
     const action = buildSettleQuestionAction({
+      venue: "zzz",
       question: {
         question: 182,
         name: "Q",
@@ -191,7 +240,7 @@ describe("settlement", () => {
       outcomes,
       winner: 7004,
     });
-    const settlements = action.outcome.settleQuestion2.outcomeSettlements;
+    const settlements = action.operation.settleQuestion2.outcomeSettlements;
     expect(settlements.map((s) => [s.outcome, s.settleFraction])).toEqual([
       [7003, "0"],
       [7004, "1"],
@@ -201,6 +250,7 @@ describe("settlement", () => {
 
   it("skips outcomes that are already settled", () => {
     const action = buildSettleQuestionAction({
+      venue: "zzz",
       question: {
         question: 182,
         name: "Q",
@@ -212,13 +262,14 @@ describe("settlement", () => {
       winner: 7004,
     });
     expect(
-      action.outcome.settleQuestion2.outcomeSettlements.map((s) => s.outcome),
+      action.operation.settleQuestion2.outcomeSettlements.map((s) => s.outcome),
     ).toEqual([7004]);
   });
 
   it("refuses a winner that is not an unsettled named outcome", () => {
     expect(() =>
       buildSettleQuestionAction({
+        venue: "zzz",
         question: {
           question: 182,
           name: "Q",
@@ -230,6 +281,50 @@ describe("settlement", () => {
         winner: 7003,
       }),
     ).toThrow(DeployerError);
+  });
+});
+
+describe("sub-deployers", () => {
+  it("lowercases users and keeps the entry key order", () => {
+    const action = buildSetSubDeployersAction({
+      venue: "zzz",
+      entries: [
+        {
+          variant: "settleOutcome",
+          user: "0xAB04C8D8372D83EC939570FD2D956D0BB31AACE3",
+          allowed: true,
+        },
+      ],
+    });
+    expect(action.operation.setSubDeployers).toEqual([
+      {
+        variant: "settleOutcome",
+        user: "0xab04c8d8372d83ec939570fd2d956d0bb31aace3",
+        allowed: true,
+      },
+    ]);
+    expect(Object.keys(action.operation.setSubDeployers[0] as object)).toEqual([
+      "variant",
+      "user",
+      "allowed",
+    ]);
+  });
+
+  it("refuses a variant the exchange does not know", () => {
+    expect(() =>
+      buildSetSubDeployersAction({
+        venue: "zzz",
+        entries: [
+          { variant: "settleQuestion2" as "settleQuestion", user: "0x" + "11".repeat(20), allowed: true },
+        ],
+      }),
+    ).toThrow(DeployerError);
+  });
+
+  it("refuses an empty entry list", () => {
+    expect(() => buildSetSubDeployersAction({ venue: "zzz", entries: [] })).toThrow(
+      DeployerError,
+    );
   });
 });
 
@@ -292,6 +387,24 @@ describe("account actions", () => {
       buildConvertToMultiSigUserAction({
         authorizedUsers: ["0x" + "11".repeat(20)],
         threshold: 2,
+        nonce: 1,
+        network: "testnet",
+      }),
+    ).toThrow(DeployerError);
+  });
+
+  it("converts back to a normal user with an empty signer set", () => {
+    const action = buildConvertToMultiSigUserAction({
+      authorizedUsers: [],
+      threshold: 0,
+      nonce: 1,
+      network: "testnet",
+    });
+    expect(action.signers).toBe('{"authorizedUsers":[],"threshold":0}');
+    expect(() =>
+      buildConvertToMultiSigUserAction({
+        authorizedUsers: [],
+        threshold: 1,
         nonce: 1,
         network: "testnet",
       }),

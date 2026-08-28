@@ -61,6 +61,7 @@ describe("inner L1 signatures", () => {
       network: "testnet",
       nonce: NONCE,
       action: buildRegisterStandaloneOutcomeAction({
+        venue: "zzz",
         templateId: "binaryPrice4",
         values: { perp: "BTC", threshold: "50000", time: "20260901-1200" },
       }) as unknown as Record<string, unknown>,
@@ -71,7 +72,7 @@ describe("inner L1 signatures", () => {
       { source: string; connectionId: string },
     ];
     expect(message.connectionId).toBe(
-      "0x26e930596a5e47260248e282481f3654cbf08b17172bd774b9b9687e0b9e98cd",
+      "0x6e975a53fd869f7f24691b1ee9367ce8a1afadc09f011c6278a48beb7d0168b0",
     );
     expect(message.source).toBe("b");
   });

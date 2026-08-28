@@ -37,8 +37,10 @@ import {
   buildConvertToMultiSigUserAction,
   buildCWithdrawAction,
   buildDeactivateDeployerAction,
+  buildRegisterAndAssociateNamedOutcomeAction,
   buildRegisterQuestionAction,
   buildRegisterStandaloneOutcomeAction,
+  buildSetSubDeployersAction,
   buildSettleOutcomeAction,
   buildSettleQuestionAction,
   buildTokenDelegateAction,
@@ -46,8 +48,10 @@ import {
   nextNonce,
 } from "./actions";
 import type {
+  RegisterAndAssociateNamedOutcomeParams,
   RegisterQuestionParams,
   RegisterStandaloneOutcomeParams,
+  SetSubDeployersParams,
 } from "./actions";
 import { DeployerError } from "./error";
 import { readDeployedOutcomes, type DeployedOutcome } from "./keywords";
@@ -78,7 +82,7 @@ import type {
 } from "./types";
 
 /**
- * Read the exchange's answer. A `spotDeploy` can come back `ok` at the top
+ * Read the exchange's answer. An `outcomeDeploy` can come back `ok` at the top
  * level and still carry a per-item error underneath, so both are checked.
  */
 function interpret(res: { status?: string; response?: unknown }): {
@@ -272,36 +276,66 @@ export class HIP4DeployerAdapter {
     return this.submitL1(buildRegisterQuestionAction(params));
   }
 
+  /** Add one named outcome to a live question of the venue. */
+  async registerAndAssociateNamedOutcome(
+    params: RegisterAndAssociateNamedOutcomeParams,
+  ): Promise<DeployerActionResult> {
+    return this.submitL1(buildRegisterAndAssociateNamedOutcomeAction(params));
+  }
+
   /**
-   * Settle a standalone outcome. `settleFraction` is the share paid to the
-   * first side: `"1"` pays side 0, `"0"` pays side 1.
+   * Settle one outcome. `settleFraction` is the share paid to the first side:
+   * `"1"` pays side 0, `"0"` pays side 1; only a standalone outcome may split.
+   * The venue is read from the outcome's own metadata unless given.
    */
   async settleOutcome(params: {
     outcomeId: number;
     settleFraction: string;
-    details?: string;
+    venue?: string;
   }): Promise<DeployerActionResult> {
     const outcome = await this.fetchOutcome(params.outcomeId);
+    const venue = params.venue ?? outcome.venue;
+    if (!venue) {
+      throw new DeployerError(
+        `Outcome ${params.outcomeId} carries no venue; pass one explicitly`,
+      );
+    }
     return this.submitL1(
-      buildSettleOutcomeAction(outcome, params.settleFraction, params.details ?? ""),
+      buildSettleOutcomeAction(venue, outcome, params.settleFraction),
     );
   }
 
-  /** Settle every unsettled named outcome of a question: winner 1, rest 0. */
+  /**
+   * Settle every unsettled named outcome of a question: winner 1, rest 0.
+   * The venue is read from the named outcomes' metadata unless given.
+   */
   async settleQuestion(params: {
     questionId: number;
     winner: number;
-    details?: string;
+    venue?: string;
   }): Promise<DeployerActionResult> {
     const { question, outcomes } = await this.fetchQuestion(params.questionId);
+    const venue = params.venue ?? outcomes.find((o) => o.venue)?.venue;
+    if (!venue) {
+      throw new DeployerError(
+        `Question ${params.questionId} carries no venue; pass one explicitly`,
+      );
+    }
     return this.submitL1(
       buildSettleQuestionAction({
+        venue,
         question,
         outcomes,
         winner: params.winner,
-        details: params.details,
       }),
     );
+  }
+
+  /** Grant or revoke sub-deployer permissions on the venue. */
+  async setSubDeployers(
+    params: SetSubDeployersParams,
+  ): Promise<DeployerActionResult> {
+    return this.submitL1(buildSetSubDeployersAction(params));
   }
 
   // -- User-signed account actions ------------------------------------------

@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Deployer actions follow the published HIP-4 reference (breaking within
+  the experimental surface).** Deploy and settle actions are now
+  `{ type: "outcomeDeploy", venue, operation }` instead of
+  `{ type: "spotDeploy", outcome }`; testnet rejects the old shape. Every
+  register builder and `RegisterStandaloneOutcomeParams` /
+  `RegisterQuestionParams` / `SettleQuestionParams` take a required `venue`;
+  `buildSettleOutcomeAction(venue, outcome, fraction)`. The adapter's
+  `settleOutcome` / `settleQuestion` read the venue from `outcomeMeta`.
+  `buildDeactivateDeployerAction` emits `{ deactivate: null }`. The `details`
+  parameter on settlements is gone (the exchange requires it empty).
+  `venueNameError` refuses `spot`; questions are capped at 100 named
+  outcomes. `buildConvertToMultiSigUserAction` accepts an empty signer set
+  for converting back to a normal user; the threshold sent with it (`0`) is
+  not published and has not been measured live.
+
 ### Added
+
+- `buildRegisterAndAssociateNamedOutcomeAction` /
+  `deployer.registerAndAssociateNamedOutcome` and
+  `buildSetSubDeployersAction` / `deployer.setSubDeployers`, with parity
+  vectors. `MAX_QUESTION_OUTCOMES`, `HLOutcomeDeployAction`,
+  `HLSubDeployerVariant`, `HLSubDeployerEntry`.
 
 - **Deployer surface (experimental).** Registering and settling HIP-4 markets,
   deployer activation, agent approval, and Hyperliquid native multi-sig.

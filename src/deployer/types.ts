@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // HIP-4 deployer action types
 //
-// @experimental The whole deployer surface is experimental. HIP-4 deployment,
-// settlement and native multi-sig are not covered by a published schema; the
-// shapes here were read back from the live API and from a testnet run of the
-// multi-sig deployer proof of concept (18 Aug 2026).
+// @experimental The whole deployer surface is experimental. Deploy and settle
+// shapes follow the published HIP-4 deployer actions reference
+// (for-developers/api/hip-4-deployer-actions), checked against testnet on
+// 28 Aug 2026. Native multi-sig has no published schema; its shapes were read
+// back from the live API and a testnet run (18 Aug 2026).
 //
 // Key order inside every action below is load-bearing. The signature is taken
 // over the MessagePack bytes, and JavaScript preserves object literal
@@ -30,47 +31,64 @@ export interface HLTemplateInstance {
 }
 
 /**
- * Activate or deactivate an outcome deployer.
- *
- * Three accepted shapes, and only three: `{ type, activate: { venueName } }`
- * to claim a venue, `{ type, isDeactivate: false }` to activate without one,
- * `{ type, isDeactivate: true }` to deactivate. A flat `venueNameIfActivate`
- * is refused with a 422.
+ * Activate or deactivate an outcome deployer. An enum with exactly two
+ * variants: `{ type, activate: { venueName } }` claims a venue,
+ * `{ type, deactivate: null }` gives it up for good.
  * @experimental
  */
-export interface HLActivateOutcomeDeployerAction {
-  type: "activateOutcomeDeployer";
-  activate?: { venueName: string };
-  isDeactivate?: boolean;
+export type HLActivateOutcomeDeployerAction =
+  | { type: "activateOutcomeDeployer"; activate: { venueName: string } }
+  | { type: "activateOutcomeDeployer"; deactivate: null };
+
+/**
+ * Every deploy and settle action is an `outcomeDeploy` carrying the
+ * deployer's venue at the top level and one operation variant underneath.
+ * Key order is `type, venue, operation`.
+ * @experimental
+ */
+export interface HLOutcomeDeployAction<Op> {
+  type: "outcomeDeploy";
+  venue: string;
+  operation: Op;
 }
 
 /** Register a standalone two-sided outcome from a registry template. @experimental */
-export interface HLRegisterStandaloneOutcomeAction {
-  type: "spotDeploy";
-  outcome: { registerStandaloneOutcomeFromTemplate: HLTemplateInstance };
-}
+export type HLRegisterStandaloneOutcomeAction = HLOutcomeDeployAction<{
+  registerStandaloneOutcomeFromTemplate: HLTemplateInstance;
+}>;
 
 /** Register a question and its named outcomes in one action. @experimental */
-export interface HLRegisterQuestionAction {
-  type: "spotDeploy";
-  outcome: {
-    registerQuestionFromTemplate: {
-      questionTemplateInstance: HLTemplateInstance;
-      /** In the order given, not sorted. */
-      namedOutcomeTemplateInstances: HLTemplateInstance[];
-    };
+export type HLRegisterQuestionAction = HLOutcomeDeployAction<{
+  registerQuestionFromTemplate: {
+    questionTemplateInstance: HLTemplateInstance;
+    /** In the order given, not sorted. */
+    namedOutcomeTemplateInstances: HLTemplateInstance[];
   };
-}
+}>;
+
+/**
+ * Add one named outcome to a live question. It inherits the question's fee
+ * scale, so the instance carries none.
+ * @experimental
+ */
+export type HLRegisterAndAssociateNamedOutcomeAction = HLOutcomeDeployAction<{
+  registerAndAssociateNamedOutcomeFromTemplate: {
+    question: number;
+    namedOutcomeTemplateInstance: HLTemplateInstance;
+  };
+}>;
 
 /**
  * How one outcome settles. `settleFraction` is the share paid to the first
  * side: `"1"` pays side 0, `"0"` pays side 1, and anything between splits.
+ * Only standalone outcomes may split; question outcomes settle to `"0"` or
+ * `"1"`. `details` must be empty.
  * @experimental
  */
 export interface HLOutcomeSettlement {
   outcome: number;
   settleFraction: string;
-  details: string;
+  details: "";
   /** The outcome's own name and description, echoed back verbatim. */
   nameAndDescription: [string, string];
   /** The outcome's own side names, echoed back verbatim. */
@@ -78,30 +96,52 @@ export interface HLOutcomeSettlement {
 }
 
 /** Settle a standalone outcome. @experimental */
-export interface HLSettleOutcomeAction {
-  type: "spotDeploy";
-  outcome: { settleOutcome: HLOutcomeSettlement };
-}
+export type HLSettleOutcomeAction = HLOutcomeDeployAction<{
+  settleOutcome: HLOutcomeSettlement;
+}>;
 
 /** Settle every unsettled named outcome of a question at once. @experimental */
-export interface HLSettleQuestionAction {
-  type: "spotDeploy";
-  outcome: {
-    settleQuestion2: {
-      question: number;
-      outcomeSettlements: HLOutcomeSettlement[];
-      nameAndDescription: [string, string];
-    };
+export type HLSettleQuestionAction = HLOutcomeDeployAction<{
+  settleQuestion2: {
+    question: number;
+    outcomeSettlements: HLOutcomeSettlement[];
+    nameAndDescription: [string, string];
   };
+}>;
+
+/**
+ * An operation a sub-deployer may be granted. `settleQuestion` authorizes
+ * the `settleQuestion2` action.
+ * @experimental
+ */
+export type HLSubDeployerVariant =
+  | "registerStandaloneOutcomeFromTemplate"
+  | "registerQuestionFromTemplate"
+  | "registerAndAssociateNamedOutcomeFromTemplate"
+  | "settleOutcome"
+  | "settleQuestion";
+
+/** One grant or revocation. Key order `variant, user, allowed`. @experimental */
+export interface HLSubDeployerEntry {
+  variant: HLSubDeployerVariant;
+  user: string;
+  allowed: boolean;
 }
+
+/** Grant or revoke sub-deployer permissions. @experimental */
+export type HLSetSubDeployersAction = HLOutcomeDeployAction<{
+  setSubDeployers: HLSubDeployerEntry[];
+}>;
 
 /** Any L1 action the deployer surface sends. @experimental */
 export type HLDeployerAction =
   | HLActivateOutcomeDeployerAction
   | HLRegisterStandaloneOutcomeAction
   | HLRegisterQuestionAction
+  | HLRegisterAndAssociateNamedOutcomeAction
   | HLSettleOutcomeAction
-  | HLSettleQuestionAction;
+  | HLSettleQuestionAction
+  | HLSetSubDeployersAction;
 
 // -- User-signed account actions --------------------------------------------
 

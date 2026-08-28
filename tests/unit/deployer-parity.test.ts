@@ -12,8 +12,10 @@ import {
   buildConvertToMultiSigUserAction,
   buildCWithdrawAction,
   buildDeactivateDeployerAction,
+  buildRegisterAndAssociateNamedOutcomeAction,
   buildRegisterQuestionAction,
   buildRegisterStandaloneOutcomeAction,
+  buildSetSubDeployersAction,
   buildSettleOutcomeAction,
   buildSettleQuestionAction,
   buildTokenDelegateAction,
@@ -63,6 +65,7 @@ function recordingSigner(): HIP4Signer & {
 }
 
 const REGISTER_STANDALONE = buildRegisterStandaloneOutcomeAction({
+  venue: "zzz",
   templateId: "binaryPrice4",
   values: {
     perp: "BTC",
@@ -74,6 +77,7 @@ const REGISTER_STANDALONE = buildRegisterStandaloneOutcomeAction({
 });
 
 const REGISTER_QUESTION = buildRegisterQuestionAction({
+  venue: "zzz",
   question: {
     templateId: "sportsContestResult",
     values: { participantA: "Brazil", participantB: "Spain" },
@@ -86,6 +90,7 @@ const REGISTER_QUESTION = buildRegisterQuestionAction({
 });
 
 const SETTLE_OUTCOME = buildSettleOutcomeAction(
+  "zzz",
   {
     outcome: 13065,
     name: "template:binaryPrice4",
@@ -96,6 +101,7 @@ const SETTLE_OUTCOME = buildSettleOutcomeAction(
 );
 
 const SETTLE_QUESTION = buildSettleQuestionAction({
+  venue: "zzz",
   question: {
     question: 182,
     name: "What will Hypurr eat most of?",
@@ -179,6 +185,27 @@ describe("L1 action hashes match the Python SDK", () => {
   const cases: Array<[string, unknown]> = [
     ["registerStandaloneOutcome", REGISTER_STANDALONE],
     ["registerQuestion", REGISTER_QUESTION],
+    [
+      "registerAndAssociateNamedOutcome",
+      buildRegisterAndAssociateNamedOutcomeAction({
+        venue: "zzz",
+        question: 182,
+        namedOutcome: {
+          templateId: "sportsContestParticipant",
+          values: { participant: "Spain" },
+        },
+      }),
+    ],
+    [
+      "setSubDeployers",
+      buildSetSubDeployersAction({
+        venue: "zzz",
+        entries: [
+          { variant: "settleOutcome", user: VECTORS.constants.agent, allowed: true },
+          { variant: "settleQuestion", user: VECTORS.constants.leader, allowed: false },
+        ],
+      }),
+    ],
     ["settleOutcome", SETTLE_OUTCOME],
     ["settleQuestion", SETTLE_QUESTION],
     ["activate", buildActivateDeployerAction("zzz")],
