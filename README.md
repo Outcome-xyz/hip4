@@ -33,9 +33,9 @@ await hip4.initialize();
 
 - [`auth-eoa.ts`](examples/auth-eoa.ts) - Agent key approval and auth setup
 - [`get-all-markets.ts`](examples/get-all-markets.ts) - Fetch all markets grouped by type
-- [`wc-liq-rewards-s1-get-markets.ts`](examples/wc-liq-rewards-s1-get-markets.ts) - Liquidity-reward eligibility and wallet scores for season 1 (World Cup 2026)
 - [`get-multi-outcome.ts`](examples/get-multi-outcome.ts) - Multi-outcome markets with live prices
 - [`get-recurring-markets.ts`](examples/get-recurring-markets.ts) - Recurring markets with expiry countdowns
+- [`outcome-rewards-get-programme.ts`](examples/outcome-rewards-get-programme.ts) - Programme totals, a wallet's earnings, reward periods, and the leaderboard
 - [`place-limit-order.ts`](examples/place-limit-order.ts) - Limit order with price validation
 - [`place-market-order.ts`](examples/place-market-order.ts) - Market order with FrontendMarket TIF
 - [`stream-prices.ts`](examples/stream-prices.ts) - Stream live prices via WebSocket
@@ -200,23 +200,23 @@ unsub();
 | `createPerpPriceFeed(client, coin, onSnapshot, opts?)`     | Same shape for an HL perp coin                                     |
 | `processTick`, `candleBoundaryMs`, `intervalToMs`          | Lower-level candle utilities                                       |
 
-## Liquidity rewards
+## Outcome rewards
 
-Check which markets are eligible for liquidity rewards and what each wallet
-has earned, by season (`s1` = the World Cup 2026 campaign). Endpoints and
-season mappings are configured in code (`LIQUIDITY_REWARDS_CONFIG`).
+What the Outcome Markets liquidity-rewards programme has paid: programme
+totals, one wallet's earnings, reward periods, and a leaderboard. Public,
+no auth. Endpoint is configured in code (`OUTCOME_REWARDS_CONFIG`).
 
 ```typescript
-import { liquidityRewards } from "@outcome.xyz/hip4";
+import { outcomeRewards } from "@outcome.xyz/hip4";
 
-const s1 = liquidityRewards.season("s1");
-
-const teams = await s1.checkEligibility({ subject: "teams" });
-const matches = await s1.checkEligibility({ subject: "matches" });
-const rewards = await s1.checkRewards({ wallet: "0x...", date: "2026-06-08" });
+const totals = await outcomeRewards.programme();
+const mine = await outcomeRewards.wallet("0x...");
+const periods = await outcomeRewards.periods({ limit: 50 });
+const board = await outcomeRewards.leaderboard({ limit: 10 });
 ```
 
-Reward mechanics: [World Cup Outcome Rewards](https://docs.monarch.fast/world-cup-outcome-rewards#reward-program-1-champion-market) - Upstream API: [World Cup API](https://docs.monarch.fast/world-cup-api)
+See [docs/OUTCOME-REWARDS.md](docs/OUTCOME-REWARDS.md) for the paid /
+pending / awarded distinction and full field reference.
 
 ## Deployer (experimental)
 

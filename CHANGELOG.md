@@ -26,6 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`outcomeRewards` module.** Programme-wide totals, one wallet's
+  earnings, finalized reward periods, and a leaderboard, from the public
+  Outcome liquidity-rewards payouts API (a separate service from Monarch -
+  see [docs/OUTCOME-REWARDS.md](docs/OUTCOME-REWARDS.md)):
+  - `outcomeRewards.programme()` - paid/pending/awarded USDC totals.
+  - `outcomeRewards.wallet(address)` - one wallet's totals and reward rows.
+  - `outcomeRewards.periods({ limit })` - every finalized reward period.
+  - `outcomeRewards.leaderboard({ limit })` - wallets ranked by USDC paid.
+  - `OUTCOME_REWARDS_CONFIG`, `OutcomeRewardsError`, and typed results
+    exported from the root entry point.
+  - Example: `examples/outcome-rewards-get-programme.ts`.
+
 - `buildRegisterAndAssociateNamedOutcomeAction` /
   `deployer.registerAndAssociateNamedOutcome` and
   `buildSetSubDeployersAction` / `deployer.setSubDeployers`, with parity
@@ -53,6 +65,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `assertTemplateInstance`, `renderTemplateText`, `instanceDescription`,
     `parseInstanceDescription`, `unfillablePlaceholders`, and the
     `parseSeriesId` / `splitBySeries` versioning helpers.
+
+### Removed
+
+- **`liquidityRewards` module (breaking).** Monarch has permanently retired
+  the World Cup 2026 campaign API it depended on
+  (`/marina/campaigns/world-cup-2026/*` now returns
+  `410 Gone` / `WORLD_CUP_2026_API_RETIRED` on every route, for any date, not
+  just the current one) — season `s1` was the only registered season, so the
+  whole feature is non-functional. Removed: `liquidityRewards`,
+  `LIQUIDITY_REWARDS_CONFIG`, `LiquidityRewardsError`, and every
+  `LiquidityRewards*` type. `docs/LIQUIDITY-REWARDS.md` and
+  `examples/wc-liq-rewards-s1-get-markets.ts` are gone with it.
   - Chain state: `readDeployerSnapshot`, `deployerSteps`, `canDeploy`,
     `deployBlockedReason`, `isDeployerAbstraction`, `DEPLOYER_LIMITS`.
   - Agents: `agentStatus`, `activeAgents`, `expiringAgents`, `findAgent`.

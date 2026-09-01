@@ -323,29 +323,25 @@ export type {
   ValidateKeywordOptions,
 } from "./deployer";
 
-/* Liquidity rewards (season-scoped eligibility + rewards checks) */
+/* Outcome rewards (programme totals, wallet totals, periods, leaderboard) */
 export type {
-  CheckEligibilityParams,
-  CheckRewardsParams,
-  EligibilitySubject,
-  LiquidityRewardsChampionMarket,
-  LiquidityRewardsEpochStatus,
-  LiquidityRewardsMatchMarket,
-  LiquidityRewardsMid,
-  LiquidityRewardsScore,
-  LiquidityRewardsScoredOutcome,
-  LiquidityRewardsSeasonHandle,
-  LiquidityRewardsSeasonId,
-  LiquidityRewardsSnapshot,
-  MatchesEligibility,
-  RewardsCheckResult,
-  TeamsEligibility,
-} from "./liquidity-rewards";
+  ListOptions,
+  OutcomeRewardsLeaderboardEntry,
+  OutcomeRewardsMarketId,
+  OutcomeRewardsPeriod,
+  OutcomeRewardsPeriodState,
+  OutcomeRewardsPeriodType,
+  OutcomeRewardsProgrammeTotals,
+  OutcomeRewardsRequestOptions,
+  OutcomeRewardStatus,
+  OutcomeRewardsWalletReward,
+  OutcomeRewardsWalletSummary,
+} from "./outcome-rewards";
 export {
-  LIQUIDITY_REWARDS_CONFIG,
-  liquidityRewards,
-  LiquidityRewardsError,
-} from "./liquidity-rewards";
+  OUTCOME_REWARDS_CONFIG,
+  outcomeRewards,
+  OutcomeRewardsError,
+} from "./outcome-rewards";
 
 /* Streams */
 export type { PriceFeedCandle } from "./streams/candle-utils";
