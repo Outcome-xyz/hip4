@@ -6,12 +6,6 @@ them, and a leaderboard.
 
 ## How it works
 
-```
-SDK ──> Outcome liquidity-rewards payouts API (public, no auth, CORS-open)
-        pd-liquidity-rewards-payouts.outcome-e91.workers.dev
-        configured in src/outcome-rewards/config.ts
-```
-
 This is a separate service from Monarch - it reads Monarch's finalized
 reward periods and the actual USDC transfers on Hypercore, and adds
 attribution: which reward period each payment belongs to, and what is
