@@ -7,30 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Deployer actions follow the published HIP-4 reference (breaking within
-  the experimental surface).** Deploy and settle actions are now
-  `{ type: "outcomeDeploy", venue, operation }` instead of
-  `{ type: "spotDeploy", outcome }`; testnet rejects the old shape. Every
-  register builder and `RegisterStandaloneOutcomeParams` /
-  `RegisterQuestionParams` / `SettleQuestionParams` take a required `venue`;
-  `buildSettleOutcomeAction(venue, outcome, fraction)`. The adapter's
-  `settleOutcome` / `settleQuestion` read the venue from `outcomeMeta`.
-  `buildDeactivateDeployerAction` emits `{ deactivate: null }`. The `details`
-  parameter on settlements is gone (the exchange requires it empty).
-  `venueNameError` refuses `spot`; questions are capped at 100 named
-  outcomes. `buildConvertToMultiSigUserAction` accepts an empty signer set
-  for converting back to a normal user; the threshold sent with it (`0`) is
-  not published and has not been measured live.
+## [1.1.0-beta] - 2026-09-02
 
 ### Added
-
-- `buildRegisterAndAssociateNamedOutcomeAction` /
-  `deployer.registerAndAssociateNamedOutcome` and
-  `buildSetSubDeployersAction` / `deployer.setSubDeployers`, with parity
-  vectors. `MAX_QUESTION_OUTCOMES`, `HLOutcomeDeployAction`,
-  `HLSubDeployerVariant`, `HLSubDeployerEntry`.
 
 - **Deployer surface (experimental).** Registering and settling HIP-4 markets,
   deployer activation, agent approval, and Hyperliquid native multi-sig.
@@ -39,12 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [docs/DEPLOYER.md](docs/DEPLOYER.md).
   - `hip4.deployer` on the adapter, plus a standalone `HIP4DeployerAdapter`.
   - Action builders: `buildRegisterStandaloneOutcomeAction`,
-    `buildRegisterQuestionAction`, `buildSettleOutcomeAction`,
+    `buildRegisterQuestionAction`,
+    `buildRegisterAndAssociateNamedOutcomeAction`, `buildSettleOutcomeAction`,
     `buildSettleQuestionAction`, `buildActivateDeployerAction`,
-    `buildApproveAgentAction`, `buildConvertToMultiSigUserAction`,
-    `buildUserSetAbstractionAction`, `buildTokenDelegateAction`,
-    `buildCDepositAction`, `buildCWithdrawAction`. All pure, all producing the
-    exact key order the exchange hashes.
+    `buildSetSubDeployersAction`, `buildApproveAgentAction`,
+    `buildConvertToMultiSigUserAction`, `buildUserSetAbstractionAction`,
+    `buildTokenDelegateAction`, `buildCDepositAction`, `buildCWithdrawAction`.
+    All pure, all producing the exact key order the exchange hashes, all
+    covered by parity vectors. Their adapter counterparts include
+    `deployer.registerAndAssociateNamedOutcome` and `deployer.setSubDeployers`.
   - Multi-sig: `signMultiSigInnerL1Action`,
     `signMultiSigInnerUserSignedAction`, `buildMultiSigAction`,
     `signMultiSigEnvelope`, `multiSigActionHash`, `withMultiSigTypes`. Envelope
@@ -65,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     keeps a template's event time separate from its resolution deadline.
     Covers the `template:*` markets that `parseDescription` does not, which
     on live testnet is 237 outcomes against 5.
+  - `readDeployedOutcomes` and `questionByOutcome`. A question's outcomes carry
+    no times of their own, so they inherit the parent question's; without this
+    every named outcome read as having no deadline.
   - Settlement tracking: `settlementQueue`, `settlementStatus`,
     `deployer.fetchSettlementQueue(master, window)`. A template's own
     `resolutionDeadline` is used where it publishes one; otherwise the caller
@@ -78,18 +63,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     with two inner signers, and it fails as `Invalid multi-sig outer signer`.
     Measured on testnet 19 Aug 2026: 0 of 2 accepted zero-padded, 6 of 6
     minimal, 24 of 24 after the fix.
-  - `readDeployedOutcomes` and `questionByOutcome`. A question's outcomes carry
-    no times of their own, so they inherit the parent question's; without this
-    every named outcome read as having no deadline.
+  - Types and constants: `MAX_QUESTION_OUTCOMES`, `HLOutcomeDeployAction`,
+    `HLSubDeployerVariant`, `HLSubDeployerEntry`.
 
-### Fixed
+- **`outcomeRewards` module.** Programme-wide totals, one wallet's
+  earnings, finalized reward periods, and a leaderboard, from the public
+  Outcome liquidity-rewards payouts API (a separate service from Monarch -
+  see [docs/OUTCOME-REWARDS.md](docs/OUTCOME-REWARDS.md)):
+  - `outcomeRewards.programme()` - paid/pending/awarded USDC totals, plus
+    `last24h` (rolling trailing-24-hour `paidUsdc` / `payments`) and `today`
+    (the same since the current UTC day began, with a distinct-wallet count).
+  - `outcomeRewards.wallet(address)` - one wallet's totals and reward rows.
+  - `outcomeRewards.periods({ limit })` - every finalized reward period.
+  - `outcomeRewards.leaderboard({ limit })` - wallets ranked by USDC paid.
+  - `OUTCOME_REWARDS_CONFIG`, `OutcomeRewardsError`, and typed results
+    (including `OutcomeRewardsWindowTotals` and `OutcomeRewardsTodayTotals`)
+    exported from the root entry point.
+  - Example: `examples/outcome-rewards-get-programme.ts`.
 
-- `./types` now points at the declaration files tsup emits. The old paths named
-  a directory that was never built. TypeScript fell through to the `default`
-  condition and resolved types anyway, so no consumer was broken; the config
-  was stale rather than wrong.
-- `publishConfig.tag` is `alpha`, so publishing a prerelease cannot move the
-  `latest` dist-tag by default.
 - `client.fetchOutcomeTemplates()` - the live template registry.
 - `client.fetchMultiSigSigners(user)` - authorized users and threshold, or
   `null` for an account that has not been converted.
@@ -100,6 +91,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `outcomeMeta` now types `deployers` and `feeScale`, and an outcome its
   `venue` and `deployerFeeScale`. `userRole` types the `data.user` field an
   agent role carries.
+
+### Changed
+
+- **Deployer actions follow the published HIP-4 reference (breaking within
+  the experimental surface).** Deploy and settle actions are now
+  `{ type: "outcomeDeploy", venue, operation }` instead of
+  `{ type: "spotDeploy", outcome }`; testnet rejects the old shape. Every
+  register builder and `RegisterStandaloneOutcomeParams` /
+  `RegisterQuestionParams` / `SettleQuestionParams` take a required `venue`;
+  `buildSettleOutcomeAction(venue, outcome, fraction)`. The adapter's
+  `settleOutcome` / `settleQuestion` read the venue from `outcomeMeta`.
+  `buildDeactivateDeployerAction` emits `{ deactivate: null }`. The `details`
+  parameter on settlements is gone (the exchange requires it empty).
+  `venueNameError` refuses `spot`; questions are capped at 100 named
+  outcomes. `buildConvertToMultiSigUserAction` accepts an empty signer set
+  for converting back to a normal user; the threshold sent with it (`0`) is
+  not published and has not been measured live.
+
+### Removed
+
+- **`liquidityRewards` module (breaking).** Monarch has permanently retired
+  the World Cup 2026 campaign API it depended on
+  (`/marina/campaigns/world-cup-2026/*` now returns
+  `410 Gone` / `WORLD_CUP_2026_API_RETIRED` on every route, for any date, not
+  just the current one) - season `s1` was the only registered season, so the
+  whole feature is non-functional. Removed: `liquidityRewards`,
+  `LIQUIDITY_REWARDS_CONFIG`, `LiquidityRewardsError`, and every
+  `LiquidityRewards*` type. `docs/LIQUIDITY-REWARDS.md` and
+  `examples/wc-liq-rewards-s1-get-markets.ts` are gone with it. The
+  `outcomeRewards` module above is its replacement, against a different API.
+
+### Fixed
+
+- `./types` now points at the declaration files tsup emits. The old paths named
+  a directory that was never built. TypeScript fell through to the `default`
+  condition and resolved types anyway, so no consumer was broken; the config
+  was stale rather than wrong.
+- `publishConfig.tag` is `beta`, so a plain `npm publish` cannot move the
+  `latest` dist-tag by default.
 
 ## [1.0.3-beta] - 2026-07-06
 
@@ -167,6 +197,7 @@ Initial public beta release.
 - Node 18+ required.
 - React bindings live in a separate package (`@outcome.xyz/hip4-react`).
 
+[1.1.0-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.1.0-beta
 [1.0.3-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.3-beta
 [1.0.2-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.2-beta
 [1.0.1-beta]: https://github.com/Outcome-xyz/hip4/releases/tag/v1.0.1-beta

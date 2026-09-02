@@ -1,6 +1,6 @@
 {
   "name": "@outcome.xyz/hip4",
-  "version": "1.1.0-alpha.0",
+  "version": "1.1.0-beta",
   "description": "TypeScript SDK for Hyperliquid HIP-4",
   "repository": {
     "type": "git",
@@ -72,7 +72,7 @@
   "license": "BUSL-1.1",
   "publishConfig": {
     "access": "public",
-    "tag": "alpha"
+    "tag": "beta"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.0",
