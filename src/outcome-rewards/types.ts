@@ -25,6 +25,17 @@ export type OutcomeRewardsPeriodState = "unpaid" | "partial" | "paid";
 
 export type OutcomeRewardsPeriodType = "market" | "epoch";
 
+/** `paidUsdc` + `payments` over a trailing window */
+export type OutcomeRewardsWindowTotals = {
+  paidUsdc: string;
+  payments: number;
+};
+
+/** {@link OutcomeRewardsWindowTotals} plus the distinct-wallet count for the window. */
+export type OutcomeRewardsTodayTotals = OutcomeRewardsWindowTotals & {
+  wallets: number;
+};
+
 /** Programme-wide totals from `outcomeRewards.programme()`. */
 export type OutcomeRewardsProgrammeTotals = {
   /** USDC actually transferred to wallets so far. */
@@ -41,6 +52,10 @@ export type OutcomeRewardsProgrammeTotals = {
   wallets: number;
   rewardPeriods: number;
   lastPaidAt: string | null;
+  /** Rolling trailing-24-hour totals. */
+  last24h: OutcomeRewardsWindowTotals;
+  /** Totals since the current UTC day began. */
+  today: OutcomeRewardsTodayTotals;
 };
 
 /** One (wallet, reward period) row from `outcomeRewards.wallet(address)`. */

@@ -334,8 +334,10 @@ export type {
   OutcomeRewardsProgrammeTotals,
   OutcomeRewardsRequestOptions,
   OutcomeRewardStatus,
+  OutcomeRewardsTodayTotals,
   OutcomeRewardsWalletReward,
   OutcomeRewardsWalletSummary,
+  OutcomeRewardsWindowTotals,
 } from "./outcome-rewards";
 export {
   OUTCOME_REWARDS_CONFIG,

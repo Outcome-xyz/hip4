@@ -12,12 +12,23 @@ import type {
   OutcomeRewardsLeaderboardEntry,
   OutcomeRewardsPeriod,
   OutcomeRewardsProgrammeTotals,
+  OutcomeRewardsTodayTotals,
   OutcomeRewardsWalletReward,
   OutcomeRewardsWalletSummary,
+  OutcomeRewardsWindowTotals,
 } from "./types";
 import { OutcomeRewardsError } from "./types";
 
 // -- Raw wire responses --------------------------------------------------------
+
+type WireWindowTotals = {
+  paid_usdc: string;
+  payments: number;
+};
+
+type WireTodayTotals = WireWindowTotals & {
+  wallets: number;
+};
 
 type WireProgrammeTotals = {
   paid_usdc: string;
@@ -27,6 +38,8 @@ type WireProgrammeTotals = {
   wallets: number;
   reward_periods: number;
   last_paid_at: string | null;
+  last_24h: WireWindowTotals;
+  today: WireTodayTotals;
 };
 
 type WireWalletReward = {
@@ -189,6 +202,18 @@ export async function fetchLeaderboard(
 
 // -- Normalizers (snake_case -> camelCase) --------------------------------------
 
+function normalizeWindowTotals(
+  raw: WireWindowTotals,
+): OutcomeRewardsWindowTotals {
+  return { paidUsdc: raw.paid_usdc, payments: raw.payments };
+}
+
+function normalizeTodayTotals(
+  raw: WireTodayTotals,
+): OutcomeRewardsTodayTotals {
+  return { paidUsdc: raw.paid_usdc, payments: raw.payments, wallets: raw.wallets };
+}
+
 function normalizeProgrammeTotals(
   raw: WireProgrammeTotals,
 ): OutcomeRewardsProgrammeTotals {
@@ -200,6 +225,8 @@ function normalizeProgrammeTotals(
     wallets: raw.wallets,
     rewardPeriods: raw.reward_periods,
     lastPaidAt: raw.last_paid_at,
+    last24h: normalizeWindowTotals(raw.last_24h),
+    today: normalizeTodayTotals(raw.today),
   };
 }
 

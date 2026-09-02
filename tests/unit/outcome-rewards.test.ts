@@ -15,13 +15,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const RAW_PROGRAMME_TOTALS = {
-  paid_usdc: "26594.024565",
+  paid_usdc: "38057.564596",
   pending_usdc: "0.000000",
-  awarded_usdc: "26594.024565",
-  payments: 3265,
-  wallets: 724,
-  reward_periods: 57,
-  last_paid_at: "2026-09-01T11:53:33.385Z",
+  awarded_usdc: "38057.564596",
+  payments: 4959,
+  wallets: 868,
+  reward_periods: 80,
+  last_paid_at: "2026-09-02T10:01:12.051Z",
+  last_24h: { paid_usdc: "11463.540031", payments: 1694 },
+  today: { paid_usdc: "11463.540031", payments: 1694, wallets: 455 },
 };
 
 const RAW_WALLET_SUMMARY = {
@@ -128,13 +130,22 @@ describe("outcomeRewards.programme()", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       `${OUTCOME_REWARDS_CONFIG.baseUrl}/v1/rewards`,
     );
-    expect(result.paidUsdc).toBe("26594.024565");
+    expect(result.paidUsdc).toBe("38057.564596");
     expect(result.pendingUsdc).toBe("0.000000");
-    expect(result.awardedUsdc).toBe("26594.024565");
-    expect(result.payments).toBe(3265);
-    expect(result.wallets).toBe(724);
-    expect(result.rewardPeriods).toBe(57);
-    expect(result.lastPaidAt).toBe("2026-09-01T11:53:33.385Z");
+    expect(result.awardedUsdc).toBe("38057.564596");
+    expect(result.payments).toBe(4959);
+    expect(result.wallets).toBe(868);
+    expect(result.rewardPeriods).toBe(80);
+    expect(result.lastPaidAt).toBe("2026-09-02T10:01:12.051Z");
+    expect(result.last24h).toEqual({
+      paidUsdc: "11463.540031",
+      payments: 1694,
+    });
+    expect(result.today).toEqual({
+      paidUsdc: "11463.540031",
+      payments: 1694,
+      wallets: 455,
+    });
   });
 
   it("respects a baseUrl override", async () => {
@@ -160,7 +171,7 @@ describe("outcomeRewards.programme()", () => {
     const result = await promise;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.payments).toBe(3265);
+    expect(result.payments).toBe(4959);
   });
 
   it("retries on network error (TypeError)", async () => {
@@ -175,7 +186,7 @@ describe("outcomeRewards.programme()", () => {
     const result = await promise;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.wallets).toBe(724);
+    expect(result.wallets).toBe(868);
   });
 
   it("propagates error when both attempts return 500", async () => {

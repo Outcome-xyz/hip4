@@ -36,6 +36,8 @@ const totals = await outcomeRewards.programme();
 | `awardedUsdc`   | `paidUsdc + pendingUsdc`, excluding dust/dismissed   |
 | `rewardPeriods` | Count of finalized reward periods                    |
 | `lastPaidAt`    | Time of the most recent transfer                     |
+| `last24h`       | Rolling trailing-24-hour totals (`paidUsdc`, `payments`) |
+| `today`         | Totals since the current UTC day began (`paidUsdc`, `payments`, `wallets`) |
 
 ### One wallet's earnings
 

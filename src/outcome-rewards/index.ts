@@ -26,8 +26,10 @@ export type {
   OutcomeRewardsPeriodType,
   OutcomeRewardsProgrammeTotals,
   OutcomeRewardStatus,
+  OutcomeRewardsTodayTotals,
   OutcomeRewardsWalletReward,
   OutcomeRewardsWalletSummary,
+  OutcomeRewardsWindowTotals,
 } from "./types";
 export { OutcomeRewardsError } from "./types";
 
