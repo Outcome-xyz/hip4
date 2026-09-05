@@ -156,30 +156,29 @@ describe("stripZeros", () => {
 // getMinShares
 // ---------------------------------------------------------------------------
 
+// Expectations name the divisor -- which side the formula picks, and where it
+// clamps -- while deriving the dividend from MIN_NOTIONAL. That keeps the
+// behaviour under test pinned without re-breaking every time the exchange
+// moves the floor.
 describe("getMinShares", () => {
-  it("markPx 0.5 → 20 shares (10 / 0.5)", () => {
-    expect(getMinShares(0.5)).toBe(20);
+  it("divides by the cheaper side", () => {
+    expect(getMinShares(0.5)).toBe(Math.ceil(MIN_NOTIONAL / 0.5));
+    // 0.1 is the cheaper side of a 0.9 mark.
+    expect(getMinShares(0.1)).toBe(Math.ceil(MIN_NOTIONAL / 0.1));
   });
 
-  it("markPx 0.9 → 101 shares (ceil(10 / min(0.9, ~0.1))  - FP: 1-0.9 ≈ 0.0999)", () => {
-    // 1 - 0.9 = 0.09999... in IEEE 754, so ceil(10 / 0.0999..) = 101
-    expect(getMinShares(0.9)).toBe(101);
+  it("inherits the float error in 1 - markPx", () => {
+    // 1 - 0.9 is 0.09999... in IEEE 754, so this is one share more than
+    // dividing by a clean 0.1 would give.
+    expect(getMinShares(0.9)).toBe(Math.ceil(MIN_NOTIONAL / (1 - 0.9)));
+    expect(getMinShares(0.9)).toBeGreaterThan(getMinShares(0.1));
   });
 
-  it("markPx 0.1 → 100 shares (10 / min(0.1, 0.9) = 10 / 0.1)", () => {
-    expect(getMinShares(0.1)).toBe(100);
-  });
-
-  it("markPx 0.01 → 1000 shares (clamped)", () => {
-    expect(getMinShares(0.01)).toBe(1000);
-  });
-
-  it("markPx 0 → uses clamp of 0.01 → 1000", () => {
-    expect(getMinShares(0)).toBe(1000);
-  });
-
-  it("markPx 1 → uses clamp of 0.01 → 1000", () => {
-    expect(getMinShares(1)).toBe(1000);
+  it("clamps a side below a cent up to 0.01", () => {
+    const clamped = Math.ceil(MIN_NOTIONAL / 0.01);
+    expect(getMinShares(0.01)).toBe(clamped);
+    expect(getMinShares(0)).toBe(clamped);
+    expect(getMinShares(1)).toBe(clamped);
   });
 
   it("always returns a whole number", () => {
@@ -187,8 +186,8 @@ describe("getMinShares", () => {
     expect(Number.isInteger(getMinShares(0.77))).toBe(true);
   });
 
-  it("markPx 0.33 → ceil(10 / 0.33) = 31", () => {
-    expect(getMinShares(0.33)).toBe(31);
+  it("rounds up rather than truncating", () => {
+    expect(getMinShares(0.33)).toBe(Math.ceil(MIN_NOTIONAL / 0.33));
   });
 });
 
@@ -197,7 +196,7 @@ describe("getMinShares", () => {
 // ---------------------------------------------------------------------------
 
 describe("MIN_NOTIONAL", () => {
-  it("is 10", () => {
-    expect(MIN_NOTIONAL).toBe(10);
+  it("is 1", () => {
+    expect(MIN_NOTIONAL).toBe(1);
   });
 });

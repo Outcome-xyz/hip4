@@ -77,14 +77,14 @@ describe("minimum shares validation", () => {
   });
 
   it("rejects order when size < getMinShares(markPx)", async () => {
-    // markPx=0.9, min(0.9, 0.1)=0.1, minShares=ceil(10/0.1)=100
+    // markPx=0.9, min(0.9, 0.1)=0.1, minShares=ceil(1/0.1)=11
     const result = await adapter.placeOrder({
       marketId: "1758",
       outcome: "#17580",
       side: "buy",
       type: "limit",
       price: "0.9",
-      amount: "50",
+      amount: "5",
       markPx: 0.9,
     });
 
@@ -93,7 +93,7 @@ describe("minimum shares validation", () => {
   });
 
   it("accepts order when size >= getMinShares(markPx)", async () => {
-    // markPx=0.5, minShares=ceil(10/0.5)=20
+    // markPx=0.5, minShares=ceil(1/0.5)=2
     const result = await adapter.placeOrder({
       marketId: "1758",
       outcome: "#17580",

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0-beta] - 2026-09-05
+
+### Changed
+
+- **`MIN_NOTIONAL` reduced from `10` to `1`.** The Hyperliquid network upgrade
+  lowers the minimum order notional for HIP-4 outcome orders to $1. This
+  changes the client-side rejection in `buildOrderWire` and, through it, every
+  floor a consumer derives from the constant.
+  - `getMinShares(markPx)` now returns roughly a tenth of its previous value at
+    any given mark, since it is `ceil(MIN_NOTIONAL / cheaper-side price)`.
+  - **Consume this version only once the network upgrade is live.** Bumping
+    ahead of the chain lets the SDK build order wires the exchange still
+    rejects, turning a clean client-side error into an exchange rejection.
+
 ## [1.1.0-beta] - 2026-09-02
 
 ### Added

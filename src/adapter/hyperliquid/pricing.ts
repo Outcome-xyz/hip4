@@ -14,7 +14,11 @@ import { toDecimal, toNum, div, mul, pow, abs } from "../../lib/precision/primit
 import { clamp, ceilToStep } from "../../lib/precision/primitives";
 import { formatSigFig, fixed } from "../../lib/precision/io";
 
-export const MIN_NOTIONAL = 10;
+// Minimum order notional in USD, enforced by the exchange on HIP-4 outcome
+// orders. Reduced from $10 to $1 by the Hyperliquid network upgrade; consumers
+// derive their own floors from this rather than restating it, so a version bump
+// is what moves them.
+export const MIN_NOTIONAL = 1;
 
 // ---------------------------------------------------------------------------
 // Tick size
