@@ -5,3 +5,4 @@ dist
 .claude
 .npmrc
 coverage
+.worktrees
