@@ -16,7 +16,7 @@
 - [ ] `pnpm typecheck` passes
 - [ ] `pnpm test` passes (and I added tests for new behavior)
 - [ ] `pnpm build` passes
-- [ ] `CHANGELOG.md` updated (under `## [Unreleased]`)
+- [ ] Added a changeset (`pnpm changeset`) describing this change, if it should ship a release
 - [ ] `docs/FEATURES.md` and/or `docs/GLOSSARY.md` updated for any public API change
 - [ ] No new runtime dependencies - or I've justified them in the description
 - [ ] No `console.log` left behind

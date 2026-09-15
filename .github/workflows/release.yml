@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # This only versions and opens/updates the Version Packages PR (no `publish` input). The actual npm
+      # publish is staged ourselves below, because staged publishing (npm's 2FA-gated pending-approval flow)
+      # is a distinct command (`npm stage publish`) that neither `pnpm publish` nor @changesets/cli's built-in
+      # publish step knows how to call — and our npm Trusted Publisher is configured stage-only, not direct
+      # publish, so a plain `npm publish` here would be rejected by the registry outright.
+      - name: Create or update Version Packages PR
+        id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          version: pnpm changeset version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fires only on the push that lands an already-versioned main (i.e. the Version Packages PR just merged,
+      # or a later push finds the staged version now live). npm's docs confirm `npm stage publish` errors
+      # (does not silently no-op) if the version is already staged pending approval — so if another commit
+      # lands on main while a release is still awaiting approval, this step would otherwise fail the job
+      # every time; the known-benign-failure branch below catches that specific case instead of going red.
+      - name: Publish or tag npm release via OIDC trusted publisher
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "npm $(npm -v)" # staged publishing needs npm >=11.15.0; log it so a version-floor failure is diagnosable
+
+          if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "$PKG_NAME@$PKG_VERSION is already live on npm. Tagging (idempotent, skips already-tagged versions)..."
+            pnpm changeset git-tag
+            git push --tags
+          else
+            echo "Staging $PKG_NAME@$PKG_VERSION for npm publish via OIDC trusted publisher..."
+            set +e
+            STAGE_OUTPUT=$(npm stage publish . --access public --tag beta --provenance 2>&1)
+            STAGE_EXIT=$?
+            set -e
+            echo "$STAGE_OUTPUT"
+            if [ "$STAGE_EXIT" -ne 0 ]; then
+              # Heuristic match on npm's documented wording ("already exists as a staged version"), not a
+              # verified exact error string (no live authenticated run to check the real text against). Folds
+              # newlines first in case npm wraps the message across lines. Fails closed: a non-matching error
+              # still falls through to `exit "$STAGE_EXIT"` below, so a wording mismatch surfaces as a loud
+              # failure to investigate, not a silently swallowed bug.
+              if echo "$STAGE_OUTPUT" | tr '\n' ' ' | grep -qi "already.*staged"; then
+                echo "$PKG_NAME@$PKG_VERSION is already staged and pending approval — nothing to do."
+              else
+                echo "npm stage publish failed for a reason other than an already-pending stage."
+                exit "$STAGE_EXIT"
+              fi
+            else
+              {
+                echo "### Release staged, needs approval"
+                echo "$PKG_NAME@$PKG_VERSION was staged for npm publish and is pending manual approval (2FA required)."
+                echo "Approve at https://www.npmjs.com/package/@outcome.xyz/hip4?activeTab=publishing, or run:"
+                echo '```'
+                echo "npm stage list $PKG_NAME"
+                echo "npm stage approve <stage-id>"
+                echo '```'
+                echo ""
+                echo "Git tags are created the next time this workflow runs after approval (any push to main)."
+                echo "For an immediate tag, run this from a checkout of main after approving:"
+                echo '```'
+                echo "pnpm changeset git-tag && git push --tags"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
