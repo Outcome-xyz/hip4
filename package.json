@@ -53,6 +53,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepare": "husky",
     "prepublishOnly": "pnpm run build"
   },
   "keywords": [
@@ -79,8 +80,11 @@
   "devDependencies": {
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
     "@vitest/coverage-v8": "^4.1.0",
     "decimal.js": "10.6.0",
+    "husky": "9.1.7",
     "tsup": "^8.0.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.0"
