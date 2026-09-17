@@ -239,6 +239,31 @@ describe("configurable minOrderNotional", () => {
     expect(result.success).toBe(true);
   });
 
+  it("uses the configured minOrderNotional floor in the shares pre-check, not the protocol default", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, { minOrderNotional: 10 });
+
+    // markPx=0.5, effective=min(0.5, 0.5)=0.5.
+    // Protocol $1 floor:    minShares = ceil(1 / 0.5) = 2.
+    // Configured $10 floor: minShares = ceil(10 / 0.5) = 20.
+    // amount=5 clears the protocol floor (5 >= 2) but not the configured one
+    // (5 < 20), so this only fails if getMinShares() is actually called with
+    // the configured floor rather than MIN_NOTIONAL.
+    const result = await adapter.placeOrder({
+      marketId: "1758",
+      outcome: "#17580",
+      side: "buy",
+      type: "limit",
+      price: "0.5",
+      amount: "5",
+      markPx: 0.5,
+    });
+
+    expect(result.success).toBe(false);
+    // Shares-check message ("below minimum N shares"), not the notional
+    // message ("below minimum $N") - distinguishes which check fired.
+    expect(result.error).toMatch(/below minimum \d+ shares/i);
+  });
+
   it("throws at construction when minOrderNotional is below the protocol MIN_NOTIONAL", () => {
     expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: 0.5 })).toThrow(
       /minOrderNotional/,
