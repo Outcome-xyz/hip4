@@ -11,7 +11,9 @@ export interface PredictionOrderParams {
   expiration?: string;
   /**
    * Mark price of the coin (0-1), used for minimum notional validation.
-   * When provided, getMinShares(markPx) is enforced before submission.
+   * When provided, the adapter's configured minOrderNotional floor (see
+   * HIP4TradingAdapter's minOrderNotional option, defaulting to the
+   * protocol MIN_NOTIONAL) is enforced before submission via getMinShares.
    */
   markPx?: number;
   /**
@@ -27,8 +29,8 @@ export interface PredictionOrderParams {
   /**
    * When true, skips the SDK's local minimum-notional and minimum-shares
    * pre-checks. Use for position-closing flows (close, close-all) where
-   * the residual notional may be under $10 but Hyperliquid still accepts
-   * the order.
+   * the residual notional may be under the configured minimum but
+   * Hyperliquid still accepts the order.
    */
   skipMinNotionalCheck?: boolean;
 }

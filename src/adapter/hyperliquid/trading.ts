@@ -209,9 +209,9 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
     this.builderAddress = config?.builderAddress;
     this.builderFee = config?.builderFee;
     this._minOrderNotional = config?.minOrderNotional ?? MIN_NOTIONAL;
-    if (this._minOrderNotional < MIN_NOTIONAL) {
+    if (!Number.isFinite(this._minOrderNotional) || this._minOrderNotional < MIN_NOTIONAL) {
       throw new Error(
-        `minOrderNotional (${this._minOrderNotional}) cannot be below the protocol MIN_NOTIONAL (${MIN_NOTIONAL})`,
+        `minOrderNotional (${this._minOrderNotional}) must be a finite number >= the protocol MIN_NOTIONAL (${MIN_NOTIONAL})`,
       );
     }
   }

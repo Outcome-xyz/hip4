@@ -269,6 +269,15 @@ describe("configurable minOrderNotional", () => {
       /minOrderNotional/,
     );
   });
+
+  it("throws at construction when minOrderNotional is NaN or Infinity", () => {
+    expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: NaN })).toThrow(
+      /minOrderNotional/,
+    );
+    expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: Infinity })).toThrow(
+      /minOrderNotional/,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
