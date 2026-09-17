@@ -54,6 +54,7 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
     this.trading = new HIP4TradingAdapter(this.client, auth, {
       builderAddress: config.builderAddress,
       builderFee: config.builderFee,
+      minOrderNotional: config.minOrderNotional,
     });
     this.auth = auth;
     this.wallet = new HIP4WalletAdapter(this.client, auth);
