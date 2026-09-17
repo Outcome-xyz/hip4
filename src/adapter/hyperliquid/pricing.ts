@@ -63,11 +63,11 @@ export function stripZeros(s: string): string {
 // Minimum order size
 // ---------------------------------------------------------------------------
 
-export function getMinShares(markPx: number): number {
+export function getMinShares(markPx: number, minNotional: number = MIN_NOTIONAL): number {
   const effective = toNum(clamp(
     toDecimal(Math.min(markPx, 1 - markPx)).toString(),
     "0.01",
     "1",
   ));
-  return Math.ceil(MIN_NOTIONAL / effective);
+  return Math.ceil(minNotional / effective);
 }
