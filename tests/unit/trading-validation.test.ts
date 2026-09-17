@@ -183,6 +183,70 @@ describe("notional validation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Configurable minOrderNotional
+// ---------------------------------------------------------------------------
+
+describe("configurable minOrderNotional", () => {
+  let client: HIP4Client;
+  let auth: HIP4Auth;
+
+  beforeEach(async () => {
+    client = createMockClient();
+    auth = new HIP4Auth();
+    await auth.initAuth("0xUSER", createMockSigner());
+  });
+
+  it("defaults minOrderNotional to MIN_NOTIONAL when not configured", () => {
+    const adapter = new HIP4TradingAdapter(client, auth);
+    expect(adapter.minOrderNotional).toBe(1);
+  });
+
+  it("uses a configured minOrderNotional as the effective floor", () => {
+    const adapter = new HIP4TradingAdapter(client, auth, { minOrderNotional: 10 });
+    expect(adapter.minOrderNotional).toBe(10);
+  });
+
+  it("rejects an order below a configured $10 floor even though it's above the $1 protocol minimum", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, { minOrderNotional: 10 });
+
+    // 0.5 * 5 = 2.5: above MIN_NOTIONAL ($1) but below the configured $10 floor.
+    const result = await adapter.placeOrder({
+      marketId: "1758",
+      outcome: "#17580",
+      side: "buy",
+      type: "limit",
+      price: "0.5",
+      amount: "5",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/notional|minimum/i);
+  });
+
+  it("accepts an order at or above a configured $10 floor", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, { minOrderNotional: 10 });
+
+    // 0.5 * 20 = 10 >= 10.
+    const result = await adapter.placeOrder({
+      marketId: "1758",
+      outcome: "#17580",
+      side: "buy",
+      type: "limit",
+      price: "0.5",
+      amount: "20",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("throws at construction when minOrderNotional is below the protocol MIN_NOTIONAL", () => {
+    expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: 0.5 })).toThrow(
+      /minOrderNotional/,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Builder fee support
 // ---------------------------------------------------------------------------
 
