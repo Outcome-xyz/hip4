@@ -53,6 +53,7 @@ export type {
   MergeQuestionParams,
   NegateOutcomeParams,
   SplitOutcomeParams,
+  TradingAdapterConfig,
 } from "./hyperliquid/trading";
 export {
   formatPredictionPrice,

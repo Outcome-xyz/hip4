@@ -15,6 +15,13 @@ export interface CreateHIP4AdapterConfig {
 	 * 0 = no fee. 100 = 0.1%. 1000 = 1.0% (maximum).
 	 */
 	builderFee?: number;
+	/**
+	 * Minimum order notional in USD, checked client-side before submission.
+	 * Must be >= the SDK's own MIN_NOTIONAL; use this to apply a stricter,
+	 * business-chosen floor on top of the real protocol minimum. Default:
+	 * MIN_NOTIONAL.
+	 */
+	minOrderNotional?: number;
 	/** Optional logger. Default: no-op. */
 	logger?: (
 		level: "debug" | "info" | "warn" | "error",

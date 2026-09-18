@@ -70,6 +70,7 @@ export type {
   QuestionIndex,
   SplitOutcomeParams,
   SpotSendParams,
+  TradingAdapterConfig,
   Unsubscribe,
   UsdClassTransferParams,
   UsdSendParams,

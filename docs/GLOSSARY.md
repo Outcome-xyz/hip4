@@ -184,6 +184,8 @@ The SDK implements two EIP-712 signing flows. Both produce `HLSignature` objects
 
 **Builder fee / Builder address** - A referral mechanism on Hyperliquid orders. The `builder` field on an `HLOrderAction` tags the order with a builder address (lowercased before signing) and a fee in tenths of a basis point (`0–1000`, where `100` = 0.1%). Adapter-level config (`createHIP4Adapter({ builderAddress, builderFee })`) sets defaults, and per-order overrides are supported. The builder field is attached whenever a `builderAddress` is set, even if `fee` is `0`. Builders must be approved separately via `submitBuilderFeeApproval` before fees can be collected. (`src/adapter/factory.ts`: `CreateHIP4AdapterConfig`; `src/adapter/hyperliquid/trading.ts`: builder field assembly; `src/adapter/hyperliquid/agent-wallet.ts`: `submitBuilderFeeApproval`)
 
+**MIN_NOTIONAL / minOrderNotional** - `MIN_NOTIONAL` (`$1`) is the real Hyperliquid protocol minimum order notional and is never edited. `minOrderNotional` is an optional adapter-level config (`createHIP4Adapter({ minOrderNotional })`) that lets a consumer apply a stricter, client-side floor on top of it; it defaults to `MIN_NOTIONAL` and construction throws if it's set below `MIN_NOTIONAL`. Per-order, `skipMinNotionalCheck` bypasses the check entirely. (`src/adapter/factory.ts`: `CreateHIP4AdapterConfig`; `src/adapter/hyperliquid/trading.ts`: `HIP4TradingAdapter`, `TradingAdapterConfig`; `src/adapter/hyperliquid/pricing.ts`: `MIN_NOTIONAL`, `getMinShares`)
+
 ---
 
 ## Data Terms

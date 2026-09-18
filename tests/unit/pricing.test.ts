@@ -189,6 +189,15 @@ describe("getMinShares", () => {
   it("rounds up rather than truncating", () => {
     expect(getMinShares(0.33)).toBe(Math.ceil(MIN_NOTIONAL / 0.33));
   });
+
+  it("accepts a custom minNotional floor instead of the protocol MIN_NOTIONAL", () => {
+    expect(getMinShares(0.5, 10)).toBe(Math.ceil(10 / 0.5));
+    expect(getMinShares(0.1, 10)).toBe(Math.ceil(10 / 0.1));
+  });
+
+  it("still defaults to MIN_NOTIONAL when no custom floor is given", () => {
+    expect(getMinShares(0.5)).toBe(getMinShares(0.5, MIN_NOTIONAL));
+  });
 });
 
 // ---------------------------------------------------------------------------
