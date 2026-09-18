@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HIP4Auth } from "../../src/adapter/hyperliquid/auth";
 import type { HIP4Client } from "../../src/adapter/hyperliquid/client";
+import { MIN_NOTIONAL } from "../../src/adapter/hyperliquid/pricing";
 import { HIP4TradingAdapter } from "../../src/adapter/hyperliquid/trading";
 import type {
   HIP4Signer,
@@ -268,6 +269,10 @@ describe("configurable minOrderNotional", () => {
     expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: 0.5 })).toThrow(
       /minOrderNotional/,
     );
+  });
+
+  it("does not throw when minOrderNotional exactly equals MIN_NOTIONAL", () => {
+    expect(() => new HIP4TradingAdapter(client, auth, { minOrderNotional: MIN_NOTIONAL })).not.toThrow();
   });
 
   it("throws at construction when minOrderNotional is NaN or Infinity", () => {

@@ -104,7 +104,7 @@ describe("createHIP4Adapter", () => {
   it("passes minOrderNotional through to the trading adapter config", () => {
     createHIP4Adapter({ minOrderNotional: 10 });
 
-    expect(vi.mocked(HIP4TradingAdapter)).toHaveBeenCalledWith(
+    expect(vi.mocked(HIP4TradingAdapter)).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ minOrderNotional: 10 }),
