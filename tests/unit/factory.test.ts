@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createHIP4Adapter } from "../../src/adapter/factory";
+import { HIP4TradingAdapter } from "../../src/adapter/hyperliquid/trading";
 
 // ---------------------------------------------------------------------------
 // Mock all sub-adapter modules so construction doesn't hit network
@@ -35,13 +36,16 @@ vi.mock("../../src/adapter/hyperliquid/account", () => ({
   },
 }));
 
-vi.mock("../../src/adapter/hyperliquid/trading", () => ({
-  HIP4TradingAdapter: class {
-    placeOrder = vi.fn().mockResolvedValue({ success: true });
-    cancelOrder = vi.fn().mockResolvedValue(undefined);
-    cancelAllOrders = vi.fn().mockRejectedValue(new Error("Not supported"));
-  },
-}));
+vi.mock("../../src/adapter/hyperliquid/trading", () => {
+  const mockClass = vi.fn(function() {
+    this.placeOrder = vi.fn().mockResolvedValue({ success: true });
+    this.cancelOrder = vi.fn().mockResolvedValue(undefined);
+    this.cancelAllOrders = vi.fn().mockRejectedValue(new Error("Not supported"));
+  });
+  return {
+    HIP4TradingAdapter: mockClass,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -95,5 +99,15 @@ describe("createHIP4Adapter", () => {
     adapter.destroy();
 
     expect(clearAuthSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes minOrderNotional through to the trading adapter config", () => {
+    createHIP4Adapter({ minOrderNotional: 10 });
+
+    expect(vi.mocked(HIP4TradingAdapter)).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ minOrderNotional: 10 }),
+    );
   });
 });

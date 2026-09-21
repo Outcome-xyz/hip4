@@ -187,11 +187,19 @@ function interpretStatus(
 export interface TradingAdapterConfig {
   builderAddress?: string;
   builderFee?: number;
+  /**
+   * Client-side order-notional floor in USD, checked before submission.
+   * Must be >= MIN_NOTIONAL (the real Hyperliquid protocol minimum); use
+   * this to apply a stricter, business-chosen floor on top of it.
+   * Default: MIN_NOTIONAL.
+   */
+  minOrderNotional?: number;
 }
 
 export class HIP4TradingAdapter implements PredictionTradingAdapter {
   private readonly builderAddress?: string;
   private readonly builderFee?: number;
+  private readonly _minOrderNotional: number;
 
   constructor(
     private readonly client: HIP4Client,
@@ -200,6 +208,17 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
   ) {
     this.builderAddress = config?.builderAddress;
     this.builderFee = config?.builderFee;
+    this._minOrderNotional = config?.minOrderNotional ?? MIN_NOTIONAL;
+    if (!Number.isFinite(this._minOrderNotional) || this._minOrderNotional < MIN_NOTIONAL) {
+      throw new Error(
+        `minOrderNotional (${this._minOrderNotional}) must be a finite number >= the protocol MIN_NOTIONAL (${MIN_NOTIONAL})`,
+      );
+    }
+  }
+
+  /** Effective client-side order-notional floor: MIN_NOTIONAL unless raised by config. */
+  get minOrderNotional(): number {
+    return this._minOrderNotional;
   }
 
   private buildOrderWire(
@@ -225,7 +244,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       const numericSize = toDecimal(amount);
 
       if (params.markPx !== undefined && !params.skipMinNotionalCheck) {
-        const minShares = getMinShares(params.markPx);
+        const minShares = getMinShares(params.markPx, this._minOrderNotional);
         if (numericSize.lt(minShares)) {
           return {
             error: `Size ${numericSize} below minimum ${minShares} shares (markPx=${params.markPx})`,
@@ -247,10 +266,10 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
 
       if (
         !params.skipMinNotionalCheck &&
-        lt(effectiveNotional, String(MIN_NOTIONAL))
+        lt(effectiveNotional, String(this._minOrderNotional))
       ) {
         return {
-          error: `Notional $${fixed(effectiveNotional, 2)} below minimum $${MIN_NOTIONAL}`,
+          error: `Notional $${fixed(effectiveNotional, 2)} below minimum $${this._minOrderNotional}`,
         };
       }
     }

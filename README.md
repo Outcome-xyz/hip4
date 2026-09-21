@@ -171,11 +171,18 @@ const hip4 = createHIP4Adapter({
   // Builder fee - collected on every order placed by this adapter
   builderAddress: "0xYourBuilderAddress",
   builderFee: 100, // 0.1% (tenths of a basis point, 0-1000)
+  // Client-side order-notional floor in USD, checked before submission. Must
+  // be >= the protocol MIN_NOTIONAL; defaults to MIN_NOTIONAL if omitted.
+  minOrderNotional: 10,
   logger: (level, msg, data) => console.log(level, msg, data),
 });
 ```
 
 Per-order builder address/fee can also be passed on `placeOrder` to override the adapter-level config.
+
+`minOrderNotional` can only raise the effective floor above the protocol minimum, never lower it - the
+constructor throws if you pass a value below `MIN_NOTIONAL`. Pass `skipMinNotionalCheck: true` on an
+individual `placeOrder` call to bypass this floor (and the protocol one) entirely.
 
 ## Streams
 
