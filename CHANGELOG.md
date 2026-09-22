@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0-beta.1
+
+### Minor Changes
+
+- [#16](https://github.com/Outcome-xyz/hip4/pull/16) [`2156984`](https://github.com/Outcome-xyz/hip4/commit/2156984ce427b6c75d1844775ae127fe0fb59525) Thanks [@kolima](https://github.com/kolima)! - `createHIP4Adapter` accepts an optional `minOrderNotional` to raise the client-side order-notional
+  floor above the protocol `MIN_NOTIONAL` ($1). `getMinShares` gains an optional second parameter for
+  the same purpose. `MIN_NOTIONAL` itself is unchanged — this is an additive, backward-compatible
+  config option, not a change to the protocol floor.
+
 ## 1.2.0-beta.0
 
 ### Patch Changes
