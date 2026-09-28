@@ -557,7 +557,7 @@ export class HIP4Client {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(subMsg);
       } else {
-        this.wsPendingMessages.push(subMsg);
+        this.queueWsMessage(subMsg);
       }
       this.wsActiveSubs.add(subMsg);
     }
@@ -580,7 +580,14 @@ export class HIP4Client {
       const remaining = (this.wsSubRefCounts.get(subMsg) ?? 1) - 1;
       if (remaining <= 0) {
         this.wsSubRefCounts.delete(subMsg);
-        if (this.ws?.readyState === WebSocket.OPEN) {
+        // If the subscribe is still queued (socket not open yet), it never
+        // reached HL: drop it from the queue so it is not sent on open.
+        // Otherwise it would go out with nothing left to cancel it, and its
+        // frames would keep arriving on the shared response channel.
+        const pendingIdx = this.wsPendingMessages.indexOf(subMsg);
+        if (pendingIdx !== -1) {
+          this.wsPendingMessages.splice(pendingIdx, 1);
+        } else if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ method: "unsubscribe", subscription }));
         }
         this.wsActiveSubs.delete(subMsg);
@@ -618,6 +625,13 @@ export class HIP4Client {
     this.wsActiveSubs.clear();
     this.wsSubRefCounts.clear();
     this.wsPendingMessages = [];
+  }
+
+  /** Queue a message for the next open, skipping one that is already queued. */
+  private queueWsMessage(msg: string): void {
+    if (!this.wsPendingMessages.includes(msg)) {
+      this.wsPendingMessages.push(msg);
+    }
   }
 
   private ensureWs(): void {
@@ -677,7 +691,7 @@ export class HIP4Client {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(msg);
         } else {
-          this.wsPendingMessages.push(msg);
+          this.queueWsMessage(msg);
         }
       }
     }, delay);
