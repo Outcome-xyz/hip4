@@ -9,7 +9,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HIP4Auth } from "../../src/adapter/hyperliquid/auth";
 import type { HIP4Client } from "../../src/adapter/hyperliquid/client";
-import { HIP4TradingAdapter } from "../../src/adapter/hyperliquid/trading";
+import {
+  formatPredictionPrice,
+  HIP4TradingAdapter,
+} from "../../src/adapter/hyperliquid/trading";
 import type {
   HIP4Signer,
   HLExchangeResponse,
@@ -437,5 +440,46 @@ describe("placeOrder without auth", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("Not authenticated");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatPredictionPrice
+//
+// The >= 1000 branch emits an integer with no decimal point, so the trailing
+// zero strip has to be guarded — otherwise it eats the magnitude of the number
+// itself. `formatPrice` already covers this case ("formats 65000 → '65000'").
+// ---------------------------------------------------------------------------
+
+describe("formatPredictionPrice", () => {
+  it("keeps the trailing zeros of a round integer price", () => {
+    expect(formatPredictionPrice(1000)).toBe("1000");
+    expect(formatPredictionPrice(2000)).toBe("2000");
+    expect(formatPredictionPrice(10000)).toBe("10000");
+  });
+
+  it("keeps interior and trailing zeros of a non-round integer price", () => {
+    expect(formatPredictionPrice(1200)).toBe("1200");
+    expect(formatPredictionPrice(1500)).toBe("1500");
+    expect(formatPredictionPrice(65000)).toBe("65000");
+  });
+
+  it("still strips zeros after a decimal point", () => {
+    expect(formatPredictionPrice(0.5)).toBe("0.5");
+    expect(formatPredictionPrice(0.25)).toBe("0.25");
+    expect(formatPredictionPrice(1.5)).toBe("1.5");
+    expect(formatPredictionPrice(10.5)).toBe("10.5");
+    expect(formatPredictionPrice(20)).toBe("20");
+  });
+
+  it("round-trips to the same number for integer prices", () => {
+    for (const price of [999, 1000, 1200, 1234, 1500, 2000, 10000]) {
+      expect(Number(formatPredictionPrice(price))).toBe(price);
+    }
+  });
+
+  it("returns '0' for non-positive prices", () => {
+    expect(formatPredictionPrice(0)).toBe("0");
+    expect(formatPredictionPrice(-1)).toBe("0");
   });
 });
