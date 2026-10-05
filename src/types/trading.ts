@@ -42,6 +42,11 @@ export interface PredictionOrderResult {
   status?: string;
   shares?: string;
   error?: string;
+  /**
+   * Hyperliquid's own message when the exchange rejects the whole request,
+   * for example "User or API Wallet 0x... does not exist.".
+   */
+  raw?: string;
 }
 
 /** Result returned by placeOrders (batch). One entry per input order, index-matched. */

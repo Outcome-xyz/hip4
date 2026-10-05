@@ -204,13 +204,17 @@ export function questionByOutcome(
  * named outcome gets just `participant:Alpha`, or nothing at all for a draw.
  * Without the parent, such an outcome has no derivable time. Verified against
  * a live registration on testnet, 19 Aug 2026.
+ *
+ * `declared` is passed to `parseInstanceDescription`: pass a set, even an
+ * empty one, to read values through a glued `metadata=` routing tag.
  */
 export function readDeployedOutcome(
   outcome: HLOutcome,
   question?: HLQuestion | null,
+  declared?: ReadonlySet<string>,
 ): DeployedOutcome {
   const keywords = canonicalKeywords(
-    parseInstanceDescription(outcome.description),
+    parseInstanceDescription(outcome.description, declared),
   );
   const sides = outcome.sideSpecs.map((s) => String(s.name));
   const outcomeId = Number(outcome.outcome);
@@ -218,7 +222,9 @@ export function readDeployedOutcome(
   /* Times fall back to the question's, never the other way round: an outcome
      that states its own time is the authority on it. */
   const parentKeywords = question
-    ? canonicalKeywords(parseInstanceDescription(question.description ?? ""))
+    ? canonicalKeywords(
+        parseInstanceDescription(question.description ?? "", declared),
+      )
     : null;
 
   return {

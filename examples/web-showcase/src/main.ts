@@ -24,12 +24,14 @@ function card(options: HIP4Market[], mids: Record<string, string>, category: str
   // A question lists its options. A single market lists its two sides.
   const rows =
     options.length > 1
-      ? options.map((m) => ({ market: m, name: m.name, coin: m.sides[0].coin }))
-      : first.sides.map((s) => ({ market: first, name: s.name, coin: s.coin }));
+      ? options.map((m) => ({ market: m, name: m.parsedName ?? m.name, coin: m.sides[0].coin }))
+      : first.sides.map((s) => ({ market: first, name: s.parsedName ?? s.name, coin: s.coin }));
   const node = el(
     "article",
     { className: "card" },
-    el("h2", { textContent: "questionName" in first ? first.questionName : first.name }),
+    el("h2", {
+      textContent: "questionName" in first ? (first.parsedQuestionName ?? first.questionName) : (first.parsedName ?? first.name),
+    }),
     ...rows.map((row) =>
       el(
         "a",

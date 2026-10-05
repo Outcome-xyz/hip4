@@ -132,11 +132,13 @@ describe("HIP4MarketDataAdapter", () => {
       expect(price.outcomes).toHaveLength(2);
       expect(price.outcomes[0]).toEqual({
         name: "Side 0",
+        parsedName: "Side 0",
         price: "0.65",
         midpoint: "0.65",
       });
       expect(price.outcomes[1]).toEqual({
         name: "Side 1",
+        parsedName: "Side 1",
         price: "0.35",
         midpoint: "0.35",
       });

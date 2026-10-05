@@ -38,17 +38,19 @@ const PREDICTION_ASSET_OFFSET = 100_000_000;
 
 function buildSides(
   outcome: HLOutcome,
-  names: [string, string],
+  parsedNames: [string, string],
 ): [MarketSide, MarketSide] {
   return [
     {
-      name: names[0],
+      name: outcome.sideSpecs[0]?.name ?? "Side 0",
+      parsedName: parsedNames[0],
       coinNum: outcome.outcome * 10,
       coin: `#${outcome.outcome * 10}`,
       asset: PREDICTION_ASSET_OFFSET + outcome.outcome * 10,
     },
     {
-      name: names[1],
+      name: outcome.sideSpecs[1]?.name ?? "Side 1",
+      parsedName: parsedNames[1],
       coinNum: outcome.outcome * 10 + 1,
       coin: `#${outcome.outcome * 10 + 1}`,
       asset: PREDICTION_ASSET_OFFSET + outcome.outcome * 10 + 1,
@@ -57,8 +59,8 @@ function buildSides(
 }
 
 /**
- * Names for display. Template markets are rendered from the registry; other
- * markets keep the names they have on the wire.
+ * Readable names for the `parsed*` fields. Template markets are rendered from
+ * the registry; other markets keep the names they have on the wire.
  */
 function displayNames(
   outcome: HLOutcome,
@@ -166,7 +168,8 @@ function buildPriceBucketMarket(
   return {
     type: "priceBucket",
     outcomeId: outcome.outcome,
-    name: names.name,
+    name: outcome.name,
+    parsedName: names.name,
     description: outcome.description,
     sides,
     raw: outcome,
@@ -175,7 +178,8 @@ function buildPriceBucketMarket(
     priceThresholds: bucket.priceThresholds,
     period: bucket.period,
     questionId: entry.question.question,
-    questionName: names.questionName ?? entry.question.name,
+    questionName: entry.question.name,
+    parsedQuestionName: names.questionName ?? entry.question.name,
     questionDescription: entry.question.description,
     isFallback: entry.isFallback,
     bucketIndex: entry.bucketIndex,
@@ -197,8 +201,9 @@ function buildPriceBucketMarket(
  *   2. Outcome is in a question → multiOutcome (or priceBucket)
  *   3. Everything else → labelledBinary
  *
- * Pass the `outcomeTemplates` registry to render readable names for template
- * markets. Without it, names are kept as they are on the wire.
+ * Names are kept as Hyperliquid sends them. Pass the `outcomeTemplates`
+ * registry to render readable `parsedName`, `sides[].parsedName` and
+ * `parsedQuestionName` for template markets.
  *
  * For batch classification, prefer `classifyAllOutcomes` (builds the index
  * once). When calling `classifyOutcome` repeatedly, pass a pre-built
@@ -221,10 +226,12 @@ export function classifyOutcome(
   // 1. Try priceBinary
   const parsed = parseDescription(outcome.description);
   if (parsed) {
+    const label = `${parsed.underlying} > $${parsed.targetPrice} (${parsed.period})`;
     const market: DefaultBinaryMarket = {
       type: "defaultBinary",
       outcomeId: outcome.outcome,
-      name: `${parsed.underlying} > $${parsed.targetPrice} (${parsed.period})`,
+      name: label,
+      parsedName: label,
       description: `Will ${parsed.underlying} be above $${parsed.targetPrice} by expiry?`,
       sides,
       raw: outcome,
@@ -250,12 +257,14 @@ export function classifyOutcome(
     const market: MultiOutcomeMarket = {
       type: "multiOutcome",
       outcomeId: outcome.outcome,
-      name: names.name,
+      name: outcome.name,
+      parsedName: names.name,
       description: outcome.description,
       sides,
       raw: outcome,
       questionId: questionEntry.question.question,
-      questionName: names.questionName ?? questionEntry.question.name,
+      questionName: questionEntry.question.name,
+      parsedQuestionName: names.questionName ?? questionEntry.question.name,
       questionDescription: questionEntry.question.description,
       isFallback: questionEntry.isFallback,
       rawQuestion: questionEntry.question,
@@ -267,7 +276,8 @@ export function classifyOutcome(
   const market: LabelledBinaryMarket = {
     type: "labelledBinary",
     outcomeId: outcome.outcome,
-    name: names.name,
+    name: outcome.name,
+    parsedName: names.name,
     description: outcome.description,
     sides,
     raw: outcome,

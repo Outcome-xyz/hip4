@@ -311,11 +311,12 @@ function cutMetadataTag(part: string): string {
  * Recover the keyword values from a deployed outcome's description.
  *
  * Deployers glue a routing tag onto a keyword value, after a space:
- * `threshold:65000 metadata=category:economics|time:20260807-1600`. It is cut
- * from the value. The tag body can itself contain `|`, so segments after a
+ * `threshold:65000 metadata=category:economics|time:20260807-1600`. Without
+ * `declared`, values are returned as they are, tag included. Pass the
+ * template's declared keyword names as `declared` to cut the tag from the
+ * value and drop the tag body: it can itself contain `|`, so segments after a
  * tag are either tag body (`subCategory:N/A`) or real keywords (`time:...`).
- * Pass the template's declared keyword names as `declared` to drop the tag
- * body; without it every later `key:value` segment is kept. Limitation of the
+ * An empty set cuts the tag and keeps every segment. Limitation of the
  * format: a tag-body key equal to a declared keyword would still be parsed as
  * that keyword (no live collision today).
  */
@@ -324,6 +325,14 @@ export function parseInstanceDescription(
   declared?: ReadonlySet<string>,
 ): Record<string, string> {
   const values: Record<string, string> = {};
+  if (!declared) {
+    for (const part of description.split("|")) {
+      const at = part.indexOf(":");
+      if (at <= 0) continue;
+      values[part.slice(0, at)] = part.slice(at + 1);
+    }
+    return values;
+  }
   let seenTag = false;
   for (const raw of description.split("|")) {
     const part = cutMetadataTag(raw);
@@ -333,7 +342,7 @@ export function parseInstanceDescription(
       continue;
     }
     const key = part.slice(0, at);
-    const keep = !(seenTag && declared && declared.size > 0 && !declared.has(key));
+    const keep = !(seenTag && declared.size > 0 && !declared.has(key));
     seenTag ||= part !== raw;
     if (keep) values[key] = part.slice(at + 1);
   }

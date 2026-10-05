@@ -275,28 +275,49 @@ describe("event adapter names", () => {
     const events = await adapter.fetchEvents();
 
     const standalone = events.find((e) => e.id === "o10")!;
-    expect(standalone.title).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
-    expect(standalone.markets[0]!.question).toBe(standalone.title);
-    expect(standalone.markets[0]!.outcomes.map((o) => o.name)).toEqual([
+    expect(standalone.parsedTitle).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
+    expect(standalone.markets[0]!.parsedQuestion).toBe(standalone.parsedTitle);
+    expect(standalone.markets[0]!.outcomes.map((o) => o.parsedName)).toEqual([
       "Yes",
       "No",
     ]);
 
     const question = events.find((e) => e.id === "q5")!;
-    expect(question.title).toBe("Race on Nov 1, 2026");
-    expect(question.markets.map((m) => m.question)).toEqual([
+    expect(question.parsedTitle).toBe("Race on Nov 1, 2026");
+    expect(question.markets.map((m) => m.parsedQuestion)).toEqual([
       "Race on Nov 1, 2026",
       "ARS vs LEE",
       "Other",
     ]);
     const contest = question.markets.find((m) => m.id === "21")!;
-    expect(contest.outcomes.map((o) => o.name)).toEqual(["ARS", "LEE"]);
+    expect(contest.outcomes.map((o) => o.parsedName)).toEqual(["ARS", "LEE"]);
+  });
+
+  it("fetchEvents keeps the wire names in title, question and name", async () => {
+    const adapter = new HIP4EventAdapter(createClient());
+    const events = await adapter.fetchEvents();
+
+    const standalone = events.find((e) => e.id === "o10")!;
+    expect(standalone.title).toBe("template:priceTouch");
+    expect(standalone.markets[0]!.question).toBe("template:priceTouch");
+    expect(standalone.markets[0]!.outcomes.map((o) => o.name)).toEqual([
+      "template:Yes",
+      "template:No",
+    ]);
+    const question = events.find((e) => e.id === "q5")!;
+    expect(question.title).toBe("template:race");
+    expect(question.markets.map((m) => m.question)).toEqual([
+      "template:race",
+      "template:contest",
+      "template:contest",
+    ]);
   });
 
   it("fetchEvent returns the rendered event", async () => {
     const adapter = new HIP4EventAdapter(createClient());
     const event = await adapter.fetchEvent("o10");
-    expect(event.title).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
+    expect(event.title).toBe("template:priceTouch");
+    expect(event.parsedTitle).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
   });
 
   it("shares one outcomeTemplates request between events and markets", async () => {
@@ -314,15 +335,15 @@ describe("event adapter names", () => {
     const adapter = new HIP4EventAdapter(client);
     const events = await adapter.fetchEvents();
     const standalone = events.find((e) => e.id === "o10")!;
-    expect(standalone.title).toBe("template:priceTouch");
-    expect(standalone.markets[0]!.outcomes.map((o) => o.name)).toEqual([
+    expect(standalone.parsedTitle).toBe("template:priceTouch");
+    expect(standalone.markets[0]!.outcomes.map((o) => o.parsedName)).toEqual([
       "Yes",
       "No",
     ]);
     const markets = await adapter.fetchMarkets();
-    expect(markets.find((m) => m.outcomeId === 10)!.sides.map((s) => s.name)).toEqual(
-      ["Yes", "No"],
-    );
+    const btc = markets.find((m) => m.outcomeId === 10)!;
+    expect(btc.sides.map((s) => s.parsedName)).toEqual(["Yes", "No"]);
+    expect(btc.sides.map((s) => s.name)).toEqual(["template:Yes", "template:No"]);
   });
 
   it("keeps the same market names as classifyAllOutcomes", async () => {
@@ -330,6 +351,7 @@ describe("event adapter names", () => {
     const markets = await adapter.fetchMarkets();
     const direct = classifyAllOutcomes(META.outcomes, META.questions, TEMPLATES);
     expect(markets.map((m) => m.name)).toEqual(direct.map((m) => m.name));
+    expect(markets.map((m) => m.parsedName)).toEqual(direct.map((m) => m.parsedName));
   });
 });
 
@@ -341,15 +363,18 @@ describe("position side names", () => {
       client,
       events,
       events.getSideNameResolver(),
+      events.getParsedSideNameResolver(),
     );
     const positions = await account.fetchPositions("0xabc");
     const byMarket = new Map(positions.map((p) => [p.marketId, p]));
     expect(byMarket.get("10")!.outcome).toBe("+100");
-    expect(byMarket.get("10")!.outcomeName).toBe("Yes");
-    expect(byMarket.get("21")!.outcomeName).toBe("ARS");
-    expect(byMarket.get("10")!.eventTitle).toBe(
+    expect(byMarket.get("10")!.parsedOutcomeName).toBe("Yes");
+    expect(byMarket.get("21")!.parsedOutcomeName).toBe("ARS");
+    expect(byMarket.get("10")!.parsedEventTitle).toBe(
       "BTC touches 90000 by Nov 1, 00:00 UTC",
     );
+    expect(byMarket.get("10")!.outcomeName).toBe("template:Yes");
+    expect(byMarket.get("10")!.eventTitle).toBe("template:priceTouch");
   });
 });
 
@@ -377,6 +402,10 @@ describe("outcomeCreated updates", () => {
       },
     ]);
 
-    expect(adapter.getSideNameResolver()(30)).toEqual(["ARS", "LEE"]);
+    expect(adapter.getParsedSideNameResolver()(30)).toEqual(["ARS", "LEE"]);
+    expect(adapter.getSideNameResolver()(30)).toEqual([
+      "template:{a}",
+      "template:{b}",
+    ]);
   });
 });

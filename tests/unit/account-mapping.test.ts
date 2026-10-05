@@ -109,7 +109,7 @@ describe("fetchPositions", () => {
     expect(parseFloat(pos2!.unrealizedPnl)).toBeCloseTo(2.5, 4);
   });
 
-  it("prices '+'-prefixed balances from the '#' mid", async () => {
+  it("prices '+'-prefixed balances from the '#' mid in livePrice", async () => {
     client = createMockClient({
       fetchSpotClearinghouseState: vi.fn().mockResolvedValue({
         balances: [{ coin: "+14731", token: 0, total: "10.0", hold: "0.0", entryNtl: "4.0" }],
@@ -119,8 +119,11 @@ describe("fetchPositions", () => {
     adapter = new HIP4AccountAdapter(client);
     const [position] = await adapter.fetchPositions(TEST_ADDRESS);
     expect(position!.outcome).toBe("+14731");
-    expect(position!.currentPrice).toBe("0.6");
-    expect(position!.unrealizedPnl).toBe("2.000000");
+    expect(position!.livePrice).toBe("0.6");
+    expect(position!.liveUnrealizedPnl).toBe("2.000000");
+    // Kept as in 1.2.0-beta.2.
+    expect(position!.currentPrice).toBe("0");
+    expect(position!.unrealizedPnl).toBe("-4.000000");
   });
 
   it("sets potentialPayout to total shares", async () => {

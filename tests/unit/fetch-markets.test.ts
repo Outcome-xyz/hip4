@@ -316,12 +316,21 @@ function createTemplateClient(): HIP4Client {
 }
 
 describe("fetchMarkets template names", () => {
-  it("renders template markets from the registry", async () => {
+  it("renders template markets into the parsed fields", async () => {
     const adapter = new HIP4EventAdapter(createTemplateClient());
     const markets = await adapter.fetchMarkets();
     const btc = markets.find((m) => m.outcomeId === 10)!;
-    expect(btc.name).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
-    expect(btc.sides.map((s) => s.name)).toEqual(["Yes", "No"]);
+    expect(btc.parsedName).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
+    expect(btc.sides.map((s) => s.parsedName)).toEqual(["Yes", "No"]);
+    expect(markets.find((m) => m.outcomeId === 12)!.parsedName).toBe("Plain market");
+  });
+
+  it("keeps the wire names in name and sides[].name", async () => {
+    const adapter = new HIP4EventAdapter(createTemplateClient());
+    const markets = await adapter.fetchMarkets();
+    const btc = markets.find((m) => m.outcomeId === 10)!;
+    expect(btc.name).toBe("template:priceTouch");
+    expect(btc.sides.map((s) => s.name)).toEqual(["template:Yes", "template:No"]);
     expect(markets.find((m) => m.outcomeId === 12)!.name).toBe("Plain market");
   });
 
@@ -332,9 +341,9 @@ describe("fetchMarkets template names", () => {
     );
     const adapter = new HIP4EventAdapter(client);
     const markets = await adapter.fetchMarkets();
-    expect(markets.find((m) => m.outcomeId === 10)!.name).toBe(
-      "template:priceTouch",
-    );
+    const btc = markets.find((m) => m.outcomeId === 10)!;
+    expect(btc.name).toBe("template:priceTouch");
+    expect(btc.parsedName).toBe("template:priceTouch");
   });
 });
 

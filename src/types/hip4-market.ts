@@ -20,8 +20,14 @@ export type MarketType = "defaultBinary" | "labelledBinary" | "multiOutcome" | "
 // ---------------------------------------------------------------------------
 
 export interface MarketSide {
-  /** Human-readable side name (e.g. "Yes", "No", "Hypurr") */
+  /** Side name as sent by Hyperliquid (e.g. "Yes", "Hypurr", "template:Yes") */
   name: string;
+  /**
+   * Readable side name. Template markets are rendered from the
+   * `outcomeTemplates` registry ("template:Yes" reads "Yes"); other markets
+   * repeat `name`.
+   */
+  parsedName?: string;
   /** Raw coin number: outcomeId * 10 + sideIndex */
   coinNum: number;
   /** Coin string for API calls: "#<coinNum>" */
@@ -38,8 +44,15 @@ export interface BaseMarket {
   type: MarketType;
   /** HL outcome ID */
   outcomeId: number;
-  /** Human-readable name */
+  /** Market name as sent by Hyperliquid (e.g. "template:priceTouch") */
   name: string;
+  /**
+   * Readable market name. Template markets are rendered from the
+   * `outcomeTemplates` registry ("BTC touches 90000 by Nov 1, 00:00 UTC"),
+   * and a template question's fallback outcome reads "Other". Other markets
+   * repeat `name`.
+   */
+  parsedName?: string;
   /** Human-readable description */
   description: string;
   /** Both sides with pre-computed coin/asset identifiers */
@@ -80,8 +93,10 @@ export interface MultiOutcomeMarket extends BaseMarket {
   type: "multiOutcome";
   /** Parent question ID */
   questionId: number;
-  /** Parent question name */
+  /** Parent question name as sent by Hyperliquid */
   questionName: string;
+  /** Readable parent question name, rendered like `parsedName` */
+  parsedQuestionName?: string;
   /** Parent question description */
   questionDescription: string;
   /** Whether this is the fallback ("Other") outcome */
@@ -114,8 +129,10 @@ export interface PriceBucketMarket extends BaseMarket {
   period: string;
   /** Parent question ID */
   questionId: number;
-  /** Parent question name */
+  /** Parent question name as sent by Hyperliquid */
   questionName: string;
+  /** Readable parent question name, rendered like `parsedName` */
+  parsedQuestionName?: string;
   /** Parent question description (the raw priceBucket spec) */
   questionDescription: string;
   /** Whether this is the settlement fallback outcome */

@@ -15,6 +15,7 @@ import {
   mul,
   sub,
   toDecimal,
+  toNum,
 } from "../../lib/precision/primitives";
 import type {
   PredictionBatchOrderResult,
@@ -27,7 +28,7 @@ import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
-import { formatOutcomePrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
+import { formatPrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
 import {
   signL1Action,
   sortCancelAction,
@@ -180,13 +181,13 @@ function interpretStatus(
 }
 
 /**
- * Hyperliquid's message for a rejected request. On `status: "err"` the
- * exchange returns it as a plain string in `response`.
+ * A rejected request's result. On `status: "err"` Hyperliquid returns its
+ * message as a plain string in `response`, kept in `raw`.
  */
-function exchangeError(res: { response?: unknown }): string {
+function exchangeError(res: { response?: unknown }): PredictionOrderResult {
   return typeof res.response === "string" && res.response.length > 0
-    ? res.response
-    : "Exchange returned non-ok status";
+    ? { success: false, error: "Exchange returned non-ok status", raw: res.response }
+    : { success: false, error: "Exchange returned non-ok status" };
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +247,8 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         `Market order: side=${isBuy ? "buy" : "sell"}, price=${price} (FrontendMarket best-execution)`,
       );
     } else {
-      price = formatOutcomePrice(params.price ?? "0");
+      const rawPrice = toNum(toDecimal(params.price ?? "0"));
+      price = formatPrice(rawPrice);
       this.client.log("debug", `Limit order: price=${price}`);
 
       const numericSize = toDecimal(amount);
@@ -349,7 +351,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
-        return { success: false, error: exchangeError(res) };
+        return exchangeError(res);
       }
 
       const firstStatus = res.response.data.statuses[0];
@@ -440,9 +442,9 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
-        const error = exchangeError(res);
+        const rejected = exchangeError(res);
         for (const idx of wireToInputIndex) {
-          results[idx] = { success: false, error };
+          results[idx] = { ...rejected };
         }
         return { success: false, results };
       }

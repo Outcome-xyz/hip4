@@ -29,6 +29,8 @@ export interface PredictionPrice {
   /** Price data for each side. Names are generic ("Side 0"/"Side 1") - use event.markets[].outcomes[].name for real names. */
   outcomes: Array<{
     name: string;
+    /** Readable side name. Template sides are rendered ("template:Yes" reads "Yes"); others repeat `name`. */
+    parsedName?: string;
     price: string;
     midpoint: string;
   }>;
