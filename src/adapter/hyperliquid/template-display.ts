@@ -24,6 +24,7 @@ import type { HLOutcomeTemplate } from "./types";
 export const FALLBACK_OUTCOME_NAME = "Other";
 
 const TEMPLATE_PREFIX = "template:";
+const PLACEHOLDER = /\{\w+\}/;
 
 const DATE_TIME = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -41,9 +42,20 @@ const DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+/**
+ * Deployers may end the description with a `metadata=...` segment. It follows
+ * the keyword values and is not one of them, so drop it before parsing.
+ * Values themselves are never cut.
+ */
+function withoutMetadata(description: string): string {
+  return description
+    .split("|")
+    .filter((part) => !part.startsWith("metadata="))
+    .join("|");
+}
+
 function formatValue(hint: string | undefined, raw: string): string {
-  // Deployers may append a routing tag to the last value.
-  const value = (raw.split("metadata=")[0] ?? raw).trim();
+  const value = raw.trim();
   if (hint === "dateTime" || hint === "date") {
     const date = parseTemplateStamp(value);
     if (date) {
@@ -86,18 +98,46 @@ export function renderTemplateDisplay(
 ): { name: string; sideNames: [string, string] } {
   const templateId = templateIdOfOutcome(entity.name);
   const template = templateId ? findTemplate(templates, templateId) : null;
-  const values = parseInstanceDescription(entity.description);
+  const values = parseInstanceDescription(withoutMetadata(entity.description));
   const hints = new Map(template?.keywords ?? []);
 
   const side = (index: 0 | 1): string => {
     const raw = entity.sideSpecs?.[index]?.name ?? `Side ${index}`;
-    if (!template || !raw.startsWith(TEMPLATE_PREFIX)) return raw;
+    if (!raw.startsWith(TEMPLATE_PREFIX)) return raw;
     const text = raw.slice(TEMPLATE_PREFIX.length);
+    if (!template) {
+      // Registry unavailable or template unknown: plain text such as
+      // "template:Yes" still reads as "Yes"; placeholders stay as sent.
+      return PLACEHOLDER.test(text) ? raw : text;
+    }
     return fill(text, values, hints) ?? text;
   };
 
   return {
     name: (template && fill(template.name, values, hints)) ?? entity.name,
     sideNames: [side(0), side(1)],
+  };
+}
+
+/**
+ * Names for one outcome of a market list. The fallback leg of a template
+ * question is named "Other"; everything else goes through
+ * `renderTemplateDisplay`.
+ */
+export function renderOutcomeDisplay(
+  outcome: {
+    name: string;
+    description: string;
+    sideSpecs?: ReadonlyArray<{ name: string }>;
+  },
+  templates: readonly HLOutcomeTemplate[],
+  isFallback = false,
+): { name: string; sideNames: [string, string] } {
+  const own = renderTemplateDisplay(outcome, templates);
+  const isTemplateFallback =
+    isFallback && outcome.name.startsWith("template");
+  return {
+    name: isTemplateFallback ? FALLBACK_OUTCOME_NAME : own.name,
+    sideNames: own.sideNames,
   };
 }

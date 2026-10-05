@@ -27,7 +27,7 @@ import {
   parseDescription,
   parsePriceBucketDescription,
 } from "./market-discovery";
-import { FALLBACK_OUTCOME_NAME, renderTemplateDisplay } from "./template-display";
+import { renderOutcomeDisplay, renderTemplateDisplay } from "./template-display";
 import type { HLOutcome, HLOutcomeTemplate, HLQuestion } from "./types";
 
 const PREDICTION_ASSET_OFFSET = 100_000_000;
@@ -65,11 +65,9 @@ function displayNames(
   entry: QuestionEntry | undefined,
   templates: readonly HLOutcomeTemplate[],
 ): { name: string; sideNames: [string, string]; questionName: string | undefined } {
-  const own = renderTemplateDisplay(outcome, templates);
-  const isTemplateFallback =
-    entry?.isFallback === true && outcome.name.startsWith("template");
+  const own = renderOutcomeDisplay(outcome, templates, entry?.isFallback === true);
   return {
-    name: isTemplateFallback ? FALLBACK_OUTCOME_NAME : own.name,
+    name: own.name,
     sideNames: own.sideNames,
     questionName: entry
       ? renderTemplateDisplay(entry.question, templates).name
