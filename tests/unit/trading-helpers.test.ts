@@ -144,11 +144,27 @@ describe("formatPrice (via limit orders)", () => {
     expect(result.error).toMatch(/notional/i);
   });
 
-  it("keeps 0.012345 at 5 significant figures, as in 1.2.0-beta.2", async () => {
-    expect(await getOrderPrice("0.012345", "2000")).toBe("0.012345");
+  it("rounds 0.012345 to 5 decimals (the exchange's price tick)", async () => {
+    expect(await getOrderPrice("0.012345", "2000")).toBe("0.01235");
   });
 
-  it("sends a price rounded with formatOutcomePrice as is", async () => {
+  it("rounds batch limit prices to 5 decimals too", async () => {
+    (client.placeOrder as ReturnType<typeof vi.fn>).mockClear();
+    await adapter.placeOrders([
+      {
+        marketId: "1758",
+        outcome: "Yes",
+        side: "buy",
+        type: "limit",
+        price: "0.012345",
+        amount: "2000",
+      },
+    ]);
+    const call = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls.at(-1);
+    expect(call![0].orders[0].p).toBe("0.01235");
+  });
+
+  it("sends a price already rounded with formatOutcomePrice as is", async () => {
     expect(await getOrderPrice(formatOutcomePrice("0.012345"), "2000")).toBe("0.01235");
   });
 

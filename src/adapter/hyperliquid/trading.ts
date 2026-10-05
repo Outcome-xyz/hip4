@@ -15,7 +15,6 @@ import {
   mul,
   sub,
   toDecimal,
-  toNum,
 } from "../../lib/precision/primitives";
 import type {
   PredictionBatchOrderResult,
@@ -28,7 +27,7 @@ import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
-import { formatPrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
+import { formatOutcomePrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
 import {
   signL1Action,
   sortCancelAction,
@@ -247,8 +246,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         `Market order: side=${isBuy ? "buy" : "sell"}, price=${price} (FrontendMarket best-execution)`,
       );
     } else {
-      const rawPrice = toNum(toDecimal(params.price ?? "0"));
-      price = formatPrice(rawPrice);
+      price = formatOutcomePrice(params.price ?? "0");
       this.client.log("debug", `Limit order: price=${price}`);
 
       const numericSize = toDecimal(amount);
