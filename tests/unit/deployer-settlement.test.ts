@@ -213,6 +213,14 @@ describe("readDeployedOutcome with a glued metadata tag", () => {
     expect(b.threshold).toBe("65000");
     expect(b.eventAt?.getTime()).toBe(NOV_1);
   });
+
+  it("readDeployedOutcomes passes declared through to each outcome", () => {
+    const declared = new Set(["time", "threshold"]);
+    const [a, b] = readDeployedOutcomes([TAGGED_TIME, TAGGED_THRESHOLD], [], declared);
+    expect(a.keywords.subCategory).toBeUndefined();
+    expect(b.keywords.subCategory).toBeUndefined();
+    expect(a.eventAt?.getTime()).toBe(NOV_1);
+  });
 });
 
 describe("settlementStatus", () => {

@@ -258,13 +258,17 @@ export function readDeployedOutcome(
 /**
  * Decode every outcome of an `outcomeMeta` payload, wiring each one to its
  * parent question so a question's outcomes inherit its times.
+ *
+ * `declared` is the optional keyword-name set accepted by
+ * `readDeployedOutcome`; the same set is used for every outcome.
  */
 export function readDeployedOutcomes(
   outcomes: readonly HLOutcome[],
   questions: readonly HLQuestion[] = [],
+  declared?: ReadonlySet<string>,
 ): DeployedOutcome[] {
   const parents = questionByOutcome(questions);
   return outcomes.map((o) =>
-    readDeployedOutcome(o, parents.get(Number(o.outcome)) ?? null),
+    readDeployedOutcome(o, parents.get(Number(o.outcome)) ?? null, declared),
   );
 }

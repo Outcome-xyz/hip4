@@ -75,13 +75,17 @@ function ago(ms: number): string {
  * passed that way reads as `unknown`: its times live on the question. Decode
  * with `readDeployedOutcomes(outcomes, questions)` first, or use
  * `deployer.fetchSettlementQueue`, which does it for you.
+ *
+ * `declared` is passed to `readDeployedOutcome` when a raw `HLOutcome` is
+ * decoded here; it is ignored for an already decoded outcome.
  */
 export function settlementStatus(
   outcome: HLOutcome | DeployedOutcome,
   window: SettlementWindow,
+  declared?: ReadonlySet<string>,
 ): SettlementStatus {
   const decoded =
-    "keywords" in outcome ? outcome : readDeployedOutcome(outcome);
+    "keywords" in outcome ? outcome : readDeployedOutcome(outcome, null, declared);
   const now = window.now ?? Date.now();
   const warnLead = window.warnLeadMs ?? 0;
 
