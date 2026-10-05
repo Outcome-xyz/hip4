@@ -26,7 +26,11 @@ import type { HIP4Client } from "./client";
 import { sideCoin, withQuoteTokenDefault } from "./client";
 import { readDeployedOutcome } from "../../deployer/keywords";
 import { classifyAllOutcomes } from "./market-classification";
-import { renderOutcomeDisplay, renderTemplateDisplay } from "./template-display";
+import {
+  declaredKeywordsOf,
+  renderOutcomeDisplay,
+  renderTemplateDisplay,
+} from "./template-display";
 import type {
   HLOutcome,
   HLOutcomeMeta,
@@ -447,9 +451,13 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
       return sorted.sort((a, b) => b.outcomeId - a.outcomeId);
     }
     if (sortBy === "expiry") {
+      /* Same tag handling as the rendered names: the template's keyword set
+         separates real keywords from a metadata tag's body. */
+      const templates = await this.loadTemplates();
       const time = (m: HIP4Market) => {
         const question = "rawQuestion" in m ? m.rawQuestion : null;
-        const at = readDeployedOutcome(m.raw, question).eventAt;
+        const declared = declaredKeywordsOf(m.raw.name, templates);
+        const at = readDeployedOutcome(m.raw, question, declared).eventAt;
         return at ? at.getTime() : Number.POSITIVE_INFINITY;
       };
       return sorted.sort((a, b) => time(a) - time(b));

@@ -426,3 +426,54 @@ describe("fetchMarkets sortBy expiry with metadata tags", () => {
     ]);
   });
 });
+
+describe("fetchMarkets sortBy expiry with undeclared tag keys", () => {
+  /* The template's own time keyword (`closes`) is not one the SDK names, so
+     without the declared set an earlier stamp in the tag body would win. */
+  const closesTemplate: HLOutcomeTemplate = {
+    id: "closing",
+    role: { standaloneOutcome: { sideNames: ["Yes", "No"] } },
+    name: "{perp} closes above {target} by {closes}",
+    description: "",
+    keywords: [
+      ["perp", "hlPerp"],
+      ["target", "uDecimal"],
+      ["closes", "dateTime"],
+    ],
+  };
+
+  it("sorts by the same event time the rendered name shows", async () => {
+    const meta: HLOutcomeMeta = {
+      outcomes: [
+        {
+          outcome: 40,
+          name: "template:closing",
+          description:
+            "perp:BTC|target:65000 metadata=category:economics|resolvesAt:20250101-0000|closes:20261101-0000",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+        {
+          outcome: 41,
+          name: "template:closing",
+          description: "perp:ETH|target:5000|closes:20261015-1200",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+      ],
+      questions: [],
+    };
+    const client = {
+      ...createTemplateClient(),
+      fetchOutcomeMeta: vi.fn().mockResolvedValue(meta),
+      fetchOutcomeTemplates: vi.fn().mockResolvedValue([closesTemplate]),
+    } as unknown as HIP4Client;
+    const adapter = new HIP4EventAdapter(client);
+    const sorted = (await adapter.fetchMarkets({
+      sortBy: "expiry",
+    })) as HIP4Market[];
+    // 41 (Oct 15) before 40 (Nov 1); the tag's stamp must not pull 40 to 2025.
+    expect(sorted.map((m) => m.outcomeId)).toEqual([41, 40]);
+    expect(sorted[1].parsedName).toBe(
+      "BTC closes above 65000 by Nov 1, 00:00 UTC",
+    );
+  });
+});
