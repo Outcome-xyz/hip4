@@ -302,7 +302,10 @@ export function instanceDescription(values: Record<string, string>): string {
     .join("|");
 }
 
-const METADATA_TAG = /\s*metadata=.*$/;
+function cutMetadataTag(part: string): string {
+  const at = part.indexOf("metadata=");
+  return at < 0 ? part : part.slice(0, at).trimEnd();
+}
 
 /**
  * Recover the keyword values from a deployed outcome's description.
@@ -323,7 +326,7 @@ export function parseInstanceDescription(
   const values: Record<string, string> = {};
   let seenTag = false;
   for (const raw of description.split("|")) {
-    const part = raw.replace(METADATA_TAG, "");
+    const part = cutMetadataTag(raw);
     const at = part.indexOf(":");
     if (at <= 0) {
       seenTag ||= part !== raw;

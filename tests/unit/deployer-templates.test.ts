@@ -281,6 +281,12 @@ describe("parseInstanceDescription metadata tags", () => {
     ).toEqual({ perp: "BTC", time: "20260807-1600" });
   });
 
+  it("cuts a tag after a very long run of spaces", () => {
+    expect(
+      parseInstanceDescription(`a:1${" ".repeat(100_000)}metadata=x:y|b:2`),
+    ).toEqual({ a: "1", b: "2" });
+  });
+
   it("leaves descriptions without a tag unchanged", () => {
     expect(parseInstanceDescription("a:1|b:x y")).toEqual({ a: "1", b: "x y" });
   });
