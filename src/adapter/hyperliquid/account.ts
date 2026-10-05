@@ -76,12 +76,10 @@ function mapSpotBalance(
   const entryNtl = toDecimal(bal.entryNtl);
   const avgCost = isZero(bal.total) ? "0" : div(bal.entryNtl, bal.total);
 
-  const mid = allMids[coin];
+  // Spot balances name side coins "+<coin>"; mids use "#<coin>".
+  const mid = allMids[coin.replace(/^\+/, "#")];
   const currentPrice = mid ?? "0";
   const unrealizedPnl = mul(sub(currentPrice, avgCost), bal.total);
-  // Spot balances name side coins "+<coin>"; mids use "#<coin>".
-  const livePrice = allMids[coin.replace(/^\+/, "#")] ?? "0";
-  const liveUnrealizedPnl = mul(sub(livePrice, avgCost), bal.total);
   const potentialPayout = bal.total;
 
   const names = nameMap.get(marketId);
@@ -99,8 +97,6 @@ function mapSpotBalance(
     avgCost: fixed(avgCost, 6),
     currentPrice,
     unrealizedPnl: fixed(unrealizedPnl, 6),
-    livePrice,
-    liveUnrealizedPnl: fixed(liveUnrealizedPnl, 6),
     potentialPayout: fixed(potentialPayout, 6),
     eventStatus: "active",
   };

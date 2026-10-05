@@ -15,14 +15,10 @@ export interface PredictionPosition {
   parsedOutcomeName?: string;
   shares: string;
   avgCost: string;
-  /** Kept as in earlier versions: "0" for outcome positions. Use `livePrice`. */
-  currentPrice: string;
-  /** Kept as in earlier versions, computed from `currentPrice`. Use `liveUnrealizedPnl`. */
-  unrealizedPnl: string;
   /** The side's live mid price, or "0" when it has none. */
-  livePrice?: string;
-  /** Unrealized gain or loss at `livePrice`. */
-  liveUnrealizedPnl?: string;
+  currentPrice: string;
+  /** Unrealized gain or loss at `currentPrice`. */
+  unrealizedPnl: string;
   potentialPayout: string;
   eventStatus: "active" | "pending_resolution" | "resolved";
 }
