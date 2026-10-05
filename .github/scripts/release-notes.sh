@@ -13,6 +13,7 @@ changelog="${2:-CHANGELOG.md}"
 
 notes=$(
   awk -v v="$version" '
+    { sub(/\r$/, "") }
     /^## / {
       if (found) exit
       if ($0 == "## " v || $0 == "## [" v "]" || index($0, "## [" v "] - ") == 1) { found = 1 }

@@ -34,6 +34,9 @@ check "bracket+date format" "$(printf '### Fixed\n\n- Old format.')" "$("$script
 if "$script" 2.0 "$tmp/c.md" >/dev/null; then echo "FAIL partial version matched"; fail=1; else echo "ok   partial version does not match"; fi
 if "$script" 9.9.9 "$tmp/c.md" >/dev/null; then echo "FAIL missing version matched"; fail=1; else echo "ok   missing version exits non-zero"; fi
 
+printf '# Changelog\r\n\r\n## 3.0.0\r\n\r\n- Crlf.\r\n\r\n## 2.0.0\r\n\r\n- Old.\r\n' > "$tmp/crlf.md"
+check "CRLF changelog" "- Crlf." "$("$script" 3.0.0 "$tmp/crlf.md" | tr -d '\r')"
+
 if [ -f CHANGELOG.md ]; then
   for v in 1.3.0-beta.0 1.2.0-beta.2; do
     out="$("$script" "$v" CHANGELOG.md)"

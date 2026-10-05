@@ -15,6 +15,9 @@ name=$(node -p "require('./package.json').name")
 version=$(node -p "require('./package.json').version")
 tag="v$version"
 
+# A non-semver value such as "latest" would pass `npm view name@latest` and produce a bogus tag and Release.
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "package.json version '$version' is not semver"; exit 1; }
+
 if ! npm view "$name@$version" version >/dev/null 2>&1; then
   echo "$name@$version is not live on npm (not published yet, or staged and awaiting approval). Nothing to do."
   exit 0
@@ -23,6 +26,7 @@ fi
 # Use the commit npm recorded for the published version when it has one; otherwise main's HEAD.
 head_sha=$(git rev-parse HEAD)
 npm_sha=$(npm view "$name@$version" gitHead 2>/dev/null || true)
+[[ "$npm_sha" =~ ^[0-9a-f]{40}$ ]] || npm_sha=""
 target="$head_sha"
 if [ -n "$npm_sha" ]; then
   if [ "$npm_sha" = "$head_sha" ]; then
