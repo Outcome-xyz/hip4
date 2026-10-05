@@ -144,6 +144,19 @@ describe("stripZeros", () => {
     expect(stripZeros("100")).toBe("100");
   });
 
+  it("keeps a trailing dot that has no zeros after it", () => {
+    expect(stripZeros("1.")).toBe("1.");
+    expect(stripZeros("0.000")).toBe("0");
+  });
+
+  it("handles long runs of zeros in linear time", () => {
+    const input = "1." + "0".repeat(100_000) + "x";
+    const start = performance.now();
+    expect(stripZeros(input)).toBe(input);
+    expect(stripZeros("1." + "0".repeat(100_000))).toBe("1");
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+
   it("no-op for already clean decimals: '0.55' → '0.55'", () => {
     expect(stripZeros("0.55")).toBe("0.55");
   });

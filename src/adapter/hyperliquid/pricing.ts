@@ -72,7 +72,12 @@ export function formatOutcomePrice(price: number | string): string {
 
 export function stripZeros(s: string): string {
   if (!s.includes(".")) return s;
-  return s.replace(/\.?0+$/, "");
+  // A loop, not /\.?0+$/, which takes quadratic time on long runs of zeros.
+  let end = s.length;
+  while (end > 0 && s[end - 1] === "0") end--;
+  if (end === s.length) return s;
+  if (s[end - 1] === ".") end--;
+  return s.slice(0, end);
 }
 
 // ---------------------------------------------------------------------------
