@@ -15,6 +15,8 @@ pnpm dev
 
 Open http://localhost:5173.
 
+`createHIP4Adapter()` with no arguments targets mainnet. Pass `{ testnet: true }` to use testnet.
+
 `src/markets.ts` loads the markets, assigns categories and builds the outcome.xyz links. `src/main.ts` renders
 the page.
 
