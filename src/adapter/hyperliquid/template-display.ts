@@ -42,16 +42,31 @@ const DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const METADATA_TAG = /\s*metadata=.*$/;
+
 /**
- * Deployers may end the description with a `metadata=...` segment. It follows
- * the keyword values and is not one of them, so drop it before parsing.
- * Values themselves are never cut.
+ * Deployers glue a routing tag onto a keyword value, after a space:
+ * `threshold:65000 metadata=category:economics|time:20260807-1600`. The tag
+ * body can itself contain `|`, so segments right after a tag may be tag body
+ * (`subCategory:N/A`) or real keywords (`time:...`). Cut the tag from the
+ * value, then keep only keywords the template declares after the first tag.
  */
-function withoutMetadata(description: string): string {
-  return description
-    .split("|")
-    .filter((part) => !part.startsWith("metadata="))
-    .join("|");
+function withoutMetadata(
+  description: string,
+  keywords: ReadonlySet<string>,
+): string {
+  const kept: string[] = [];
+  let seenTag = false;
+  for (const part of description.split("|")) {
+    const cut = part.replace(METADATA_TAG, "");
+    const tagged = cut !== part;
+    if (seenTag && keywords.size > 0 && !keywords.has(cut.split(":")[0] ?? "")) {
+      continue;
+    }
+    seenTag ||= tagged;
+    if (cut) kept.push(cut);
+  }
+  return kept.join("|");
 }
 
 function formatValue(hint: string | undefined, raw: string): string {
@@ -98,8 +113,10 @@ export function renderTemplateDisplay(
 ): { name: string; sideNames: [string, string] } {
   const templateId = templateIdOfOutcome(entity.name);
   const template = templateId ? findTemplate(templates, templateId) : null;
-  const values = parseInstanceDescription(withoutMetadata(entity.description));
   const hints = new Map(template?.keywords ?? []);
+  const values = parseInstanceDescription(
+    withoutMetadata(entity.description, new Set(hints.keys())),
+  );
 
   const side = (index: 0 | 1): string => {
     const raw = entity.sideSpecs?.[index]?.name ?? `Side ${index}`;

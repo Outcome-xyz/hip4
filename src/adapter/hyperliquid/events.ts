@@ -99,7 +99,7 @@ function mapOutcomeToMarket(
   const display = renderOutcomeDisplay(outcome, templates, isFallback);
   const outcomes: PredictionOutcome[] = outcome.sideSpecs.map(
     (spec, sideIndex) => ({
-      name: display.sideNames[sideIndex === 1 ? 1 : 0] ?? spec.name,
+      name: (display.sideNames as readonly string[])[sideIndex] ?? spec.name,
       tokenId: sideCoin(outcome.outcome, sideIndex),
       price: "0",
     }),
@@ -260,8 +260,8 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
     if ("outcomeCreated" in update) {
       const spec = update.outcomeCreated;
       // Grow sideNames in place so callers using getSideNameResolver pick
-      // up the new outcome immediately. populateSideNames is gated on
-      // `!sideNames` and won't overwrite existing entries.
+      // up the new outcome immediately. Each cache refresh builds a fresh
+      // map with populateSideNames and swaps it in.
       if (this.sideNames && spec.sideSpecs.length >= 2) {
         const templates = this.templatesCache?.templates ?? [];
         this.sideNames.set(
