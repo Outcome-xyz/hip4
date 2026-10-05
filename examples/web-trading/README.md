@@ -16,6 +16,9 @@ pnpm dev
 
 Open http://localhost:5173 in a browser with a wallet extension such as MetaMask or Rabby.
 
+The example targets testnet by default. Mainnet is opt-in with `createHIP4Adapter({ testnet: false })` in
+`src/markets.ts`; orders on mainnet use real funds. Approvals follow the adapter's network.
+
 `src/markets.ts` loads the markets and assigns categories. `src/trading.ts` connects the wallet, approves the
 agent key and builder fee, and moves USDC to spot. `src/main.ts` renders the page and places and cancels orders.
 

@@ -5,8 +5,8 @@ import {
 } from "@outcome.xyz/hip4";
 import type { HIP4Market, HLOutcomeTemplate } from "@outcome.xyz/hip4";
 
-// Outcome lists mainnet markets. Omit `testnet: false` and the adapter targets testnet.
-export const hip4 = createHIP4Adapter({ testnet: false });
+// The default is testnet; pass { testnet: false } for mainnet.
+export const hip4 = createHIP4Adapter();
 
 /**
  * Outcome's live events, highest 24h volume first. An event is a question's

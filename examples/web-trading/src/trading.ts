@@ -8,7 +8,7 @@ import {
 import { createWalletClient, custom } from "viem";
 import type { Address, EIP1193Provider, WalletClient } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { arbitrum } from "viem/chains";
+import { arbitrum, arbitrumSepolia } from "viem/chains";
 import { hip4 } from "./markets";
 
 declare global {
@@ -24,14 +24,18 @@ export const BUILDER: { address: Address; fee: number } | null = null;
 // replaces the previous agent.
 const AGENT_NAME = "Acme Games";
 
+// Hyperliquid signs approvals for Arbitrum, or Arbitrum Sepolia on testnet.
+const isMainnet = !hip4.client.testnet;
+const signingChain = isMainnet ? arbitrum : arbitrumSepolia;
+
 export async function connectWallet() {
   if (!window.ethereum) throw new Error("No browser wallet found.");
   const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
   if (!account) throw new Error("The wallet returned no account.");
-  const wallet = createWalletClient({ account, chain: arbitrum, transport: custom(window.ethereum) });
-  // Hyperliquid approvals are signed for Arbitrum, and wallets only sign for the chain they're on.
-  if ((await wallet.getChainId()) !== arbitrum.id) {
-    await wallet.switchChain({ id: arbitrum.id }).catch(() => wallet.addChain({ chain: arbitrum }));
+  const wallet = createWalletClient({ account, chain: signingChain, transport: custom(window.ethereum) });
+  // Wallets only sign for the chain they're on.
+  if ((await wallet.getChainId()) !== signingChain.id) {
+    await wallet.switchChain({ id: signingChain.id }).catch(() => wallet.addChain({ chain: signingChain }));
   }
   return wallet;
 }
@@ -53,17 +57,17 @@ export async function enableTrading(wallet: WalletClient): Promise<void> {
   if (BUILDER && (await hip4.client.fetchMaxBuilderFee(account.address, BUILDER.address)) < BUILDER.fee) {
     const rate = `${BUILDER.fee / 1000}%`;
     const nonce = Date.now();
-    const typed = getBuilderFeeApprovalTypedData(BUILDER.address, rate, nonce);
+    const typed = getBuilderFeeApprovalTypedData(BUILDER.address, rate, nonce, isMainnet);
     const signature = await wallet.signTypedData({ account, ...typed });
-    const result = await submitBuilderFeeApproval(signature, BUILDER.address, rate, nonce);
+    const result = await submitBuilderFeeApproval(signature, BUILDER.address, rate, nonce, isMainnet);
     if (!result.success) throw new Error(result.error ?? "Builder fee approval failed");
   }
 
   const agent = privateKeyToAccount(generatePrivateKey());
   const nonce = Date.now();
-  const typed = getAgentApprovalTypedData(agent.address, AGENT_NAME, nonce);
+  const typed = getAgentApprovalTypedData(agent.address, AGENT_NAME, nonce, isMainnet);
   const signature = await wallet.signTypedData({ account, ...typed });
-  const result = await submitAgentApproval(signature, agent.address, AGENT_NAME, nonce);
+  const result = await submitAgentApproval(signature, agent.address, AGENT_NAME, nonce, isMainnet);
   if (!result.success) throw new Error(result.error ?? "Agent approval failed");
   await hip4.auth.initAuth(account.address, agent);
 }
