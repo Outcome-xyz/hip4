@@ -256,23 +256,10 @@ describe("versioning", () => {
 });
 
 describe("parseInstanceDescription metadata tags", () => {
-  it("keeps a glued tag in the value without declared", () => {
-    expect(
-      parseInstanceDescription(
-        "perp:BTC|threshold:65000 metadata=category:economics|time:20260807-1600",
-      ),
-    ).toEqual({
-      perp: "BTC",
-      threshold: "65000 metadata=category:economics",
-      time: "20260807-1600",
-    });
-  });
-
   it("cuts a tag glued to a mid-string value and keeps later keywords", () => {
     expect(
       parseInstanceDescription(
         "perp:BTC|threshold:65000 metadata=category:economics|time:20260807-1600",
-        new Set(),
       ),
     ).toEqual({ perp: "BTC", threshold: "65000", time: "20260807-1600" });
   });
@@ -281,7 +268,6 @@ describe("parseInstanceDescription metadata tags", () => {
     expect(
       parseInstanceDescription(
         "perp:BTC|time:20260807-1600 metadata=category:price|subCategory:N/A",
-        new Set(),
       ),
     ).toEqual({ perp: "BTC", time: "20260807-1600", subCategory: "N/A" });
   });
@@ -297,10 +283,7 @@ describe("parseInstanceDescription metadata tags", () => {
 
   it("cuts a tag after a very long run of spaces", () => {
     expect(
-      parseInstanceDescription(
-        `a:1${" ".repeat(100_000)}metadata=x:y|b:2`,
-        new Set(),
-      ),
+      parseInstanceDescription(`a:1${" ".repeat(100_000)}metadata=x:y|b:2`),
     ).toEqual({ a: "1", b: "2" });
   });
 

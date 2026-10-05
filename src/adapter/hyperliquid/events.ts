@@ -189,9 +189,6 @@ function mapStandaloneOutcomeToEvent(
  */
 export type SideNameResolver = (outcomeId: number) => [string, string] | null;
 
-/** Reads event times through a glued `metadata=` tag, keeping every keyword. */
-const NO_DECLARED: ReadonlySet<string> = new Set();
-
 export class HIP4EventAdapter implements PredictionEventAdapter {
   private cache: { events: PredictionEvent[]; timestamp: number } | null = null;
   private metaCache: {
@@ -452,7 +449,7 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
     if (sortBy === "expiry") {
       const time = (m: HIP4Market) => {
         const question = "rawQuestion" in m ? m.rawQuestion : null;
-        const at = readDeployedOutcome(m.raw, question, NO_DECLARED).eventAt;
+        const at = readDeployedOutcome(m.raw, question).eventAt;
         return at ? at.getTime() : Number.POSITIVE_INFINITY;
       };
       return sorted.sort((a, b) => time(a) - time(b));

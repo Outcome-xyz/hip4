@@ -205,8 +205,9 @@ export function questionByOutcome(
  * Without the parent, such an outcome has no derivable time. Verified against
  * a live registration on testnet, 19 Aug 2026.
  *
- * `declared` is passed to `parseInstanceDescription`: pass a set, even an
- * empty one, to read values through a glued `metadata=` routing tag.
+ * A glued `metadata=` routing tag is cut from values. Pass `declared` (the
+ * template's keyword names) to also drop the tag body's segments; it is
+ * handed to `parseInstanceDescription`.
  */
 export function readDeployedOutcome(
   outcome: HLOutcome,
