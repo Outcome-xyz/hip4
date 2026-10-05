@@ -378,3 +378,42 @@ describe("fetchMarkets with sortBy", () => {
     ).toEqual([12]);
   });
 });
+
+describe("fetchMarkets sortBy expiry with metadata tags", () => {
+  it("reads event times through a glued metadata tag", async () => {
+    const meta: HLOutcomeMeta = {
+      outcomes: [
+        {
+          outcome: 30,
+          name: "template:priceTouch",
+          description:
+            "perp:BTC|target:90000 metadata=category:economics|time:20261101-0000",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+        {
+          outcome: 31,
+          name: "template:priceTouch",
+          description:
+            "perp:ETH|target:5000|time:20261015-1200 metadata=category:price|subCategory:N/A",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+        {
+          outcome: 32,
+          name: "Plain market",
+          description: "No event time.",
+          sideSpecs: [{ name: "Yes" }, { name: "No" }],
+        },
+      ],
+      questions: [],
+    };
+    const client = {
+      ...createTemplateClient(),
+      fetchOutcomeMeta: vi.fn().mockResolvedValue(meta),
+    } as unknown as HIP4Client;
+    const adapter = new HIP4EventAdapter(client);
+    const sorted = await adapter.fetchMarkets({ sortBy: "expiry" });
+    expect((sorted as HIP4Market[]).map((m) => m.outcomeId)).toEqual([
+      31, 30, 32,
+    ]);
+  });
+});

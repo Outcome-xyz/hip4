@@ -254,3 +254,34 @@ describe("versioning", () => {
     expect(deprecated.map((t) => t.id)).toEqual(["binaryPrice"]);
   });
 });
+
+describe("parseInstanceDescription metadata tags", () => {
+  it("cuts a tag glued to a mid-string value and keeps later keywords", () => {
+    expect(
+      parseInstanceDescription(
+        "perp:BTC|threshold:65000 metadata=category:economics|time:20260807-1600",
+      ),
+    ).toEqual({ perp: "BTC", threshold: "65000", time: "20260807-1600" });
+  });
+
+  it("cuts a tag glued to the last value", () => {
+    expect(
+      parseInstanceDescription(
+        "perp:BTC|time:20260807-1600 metadata=category:price|subCategory:N/A",
+      ),
+    ).toEqual({ perp: "BTC", time: "20260807-1600", subCategory: "N/A" });
+  });
+
+  it("drops tag-body segments that are not declared keywords", () => {
+    expect(
+      parseInstanceDescription(
+        "perp:BTC|time:20260807-1600 metadata=category:price|subCategory:N/A",
+        new Set(["perp", "time"]),
+      ),
+    ).toEqual({ perp: "BTC", time: "20260807-1600" });
+  });
+
+  it("leaves descriptions without a tag unchanged", () => {
+    expect(parseInstanceDescription("a:1|b:x y")).toEqual({ a: "1", b: "x y" });
+  });
+});
