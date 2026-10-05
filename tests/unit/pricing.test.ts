@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeTickSize,
   roundToTick,
+  formatOutcomePrice,
   formatPrice,
   stripZeros,
   getMinShares,
@@ -143,6 +144,17 @@ describe("stripZeros", () => {
     expect(stripZeros("100")).toBe("100");
   });
 
+  it("keeps a trailing dot that has no zeros after it", () => {
+    expect(stripZeros("1.")).toBe("1.");
+    expect(stripZeros("0.000")).toBe("0");
+  });
+
+  it("handles long runs of zeros", () => {
+    const input = "1." + "0".repeat(100_000) + "x";
+    expect(stripZeros(input)).toBe(input);
+    expect(stripZeros("1." + "0".repeat(100_000))).toBe("1");
+  });
+
   it("no-op for already clean decimals: '0.55' → '0.55'", () => {
     expect(stripZeros("0.55")).toBe("0.55");
   });
@@ -207,5 +219,32 @@ describe("getMinShares", () => {
 describe("MIN_NOTIONAL", () => {
   it("is 1", () => {
     expect(MIN_NOTIONAL).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatOutcomePrice
+// ---------------------------------------------------------------------------
+
+describe("formatOutcomePrice", () => {
+  it("keeps prices that already fit the grid", () => {
+    expect(formatOutcomePrice("0.61047")).toBe("0.61047");
+    expect(formatOutcomePrice("0.648")).toBe("0.648");
+    expect(formatOutcomePrice(0.5)).toBe("0.5");
+  });
+
+  it("rounds to 5 decimals below 0.1, where 5 significant figures would need more", () => {
+    expect(formatOutcomePrice("0.012345")).toBe("0.01235");
+    expect(formatOutcomePrice("0.0012344")).toBe("0.00123");
+  });
+
+  it("rounds to 5 decimals above 0.1", () => {
+    expect(formatOutcomePrice("0.123456")).toBe("0.12346");
+  });
+
+  it("returns '0' for zero, negative, or sub-tick prices", () => {
+    expect(formatOutcomePrice("0")).toBe("0");
+    expect(formatOutcomePrice("-0.5")).toBe("0");
+    expect(formatOutcomePrice("0.000004")).toBe("0");
   });
 });

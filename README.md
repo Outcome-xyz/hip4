@@ -43,6 +43,8 @@ await hip4.initialize();
 - [`deployer-status.ts`](examples/deployer-status.ts) - Read a deployer's chain state and onboarding checklist (experimental)
 - [`deploy-and-settle.ts`](examples/deploy-and-settle.ts) - Register and settle a market as an approved agent (experimental)
 - [`multisig-approve-agent.ts`](examples/multisig-approve-agent.ts) - Approve an agent through a 2-of-3 multi-sig master (experimental)
+- [`web-showcase/`](examples/web-showcase) - Web page that lists Outcome markets by category and links to outcome.xyz
+- [`web-trading/`](examples/web-trading) - Web page with order book, wallet approvals and trading
 
 ## API
 

@@ -8,7 +8,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HIP4EventAdapter } from "../../src/adapter/hyperliquid/events";
 import type { HIP4Client } from "../../src/adapter/hyperliquid/client";
-import type { HLOutcomeMeta } from "../../src/adapter/hyperliquid/types";
+import type {
+  HLOutcomeMeta,
+  HLOutcomeTemplate,
+  HLWsSpotAssetCtxItem,
+} from "../../src/adapter/hyperliquid/types";
 import type { HIP4Market, MarketType } from "../../src/types/hip4-market";
 
 // ---------------------------------------------------------------------------
@@ -237,5 +241,179 @@ describe("fetchMarkets caching", () => {
 
     // outcomeMeta should only be fetched once
     expect(client.fetchOutcomeMeta).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fetchMarkets  - template names and sortBy
+// ---------------------------------------------------------------------------
+
+const templateMeta: HLOutcomeMeta = {
+  outcomes: [
+    {
+      outcome: 10,
+      name: "template:priceTouch",
+      description: "perp:BTC|target:90000|time:20261101-0000",
+      sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+    },
+    {
+      outcome: 11,
+      name: "template:priceTouch",
+      description: "perp:ETH|target:5000|time:20261015-1200",
+      sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+    },
+    {
+      outcome: 12,
+      name: "Plain market",
+      description: "No event time.",
+      sideSpecs: [{ name: "Yes" }, { name: "No" }],
+    },
+  ],
+  questions: [],
+};
+
+const templates: HLOutcomeTemplate[] = [
+  {
+    id: "priceTouch",
+    role: { standaloneOutcome: { sideNames: ["Yes", "No"] } },
+    name: "{perp} touches {target} by {time}",
+    description: "Resolves Yes if {perp} touches {target}.",
+    keywords: [
+      ["perp", "hlPerp"],
+      ["target", "uDecimal"],
+      ["time", "dateTime"],
+    ],
+  },
+];
+
+function ctx(coin: string, dayNtlVlm: string): HLWsSpotAssetCtxItem {
+  return {
+    coin,
+    dayNtlVlm,
+    markPx: "0.5",
+    midPx: "0.5",
+    prevDayPx: "0.5",
+    circulatingSupply: "0",
+    totalSupply: "0",
+    dayBaseVlm: "0",
+  };
+}
+
+function createTemplateClient(): HIP4Client {
+  return {
+    ...createMockClient(),
+    fetchOutcomeMeta: vi.fn().mockResolvedValue(templateMeta),
+    fetchOutcomeTemplates: vi.fn().mockResolvedValue(templates),
+    fetchSpotAssetCtxs: vi
+      .fn()
+      .mockResolvedValue([
+        ctx("#100", "50"),
+        ctx("#101", "10"),
+        ctx("#110", "5"),
+        ctx("#120", "100"),
+      ]),
+  } as unknown as HIP4Client;
+}
+
+describe("fetchMarkets template names", () => {
+  it("renders template markets from the registry", async () => {
+    const adapter = new HIP4EventAdapter(createTemplateClient());
+    const markets = await adapter.fetchMarkets();
+    const btc = markets.find((m) => m.outcomeId === 10)!;
+    expect(btc.name).toBe("BTC touches 90000 by Nov 1, 00:00 UTC");
+    expect(btc.sides.map((s) => s.name)).toEqual(["Yes", "No"]);
+    expect(markets.find((m) => m.outcomeId === 12)!.name).toBe("Plain market");
+  });
+
+  it("keeps wire names when the registry request fails", async () => {
+    const client = createTemplateClient();
+    (client.fetchOutcomeTemplates as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("boom"),
+    );
+    const adapter = new HIP4EventAdapter(client);
+    const markets = await adapter.fetchMarkets();
+    expect(markets.find((m) => m.outcomeId === 10)!.name).toBe(
+      "template:priceTouch",
+    );
+  });
+});
+
+describe("fetchMarkets with sortBy", () => {
+  let client: HIP4Client;
+  let adapter: HIP4EventAdapter;
+
+  beforeEach(() => {
+    client = createTemplateClient();
+    adapter = new HIP4EventAdapter(client);
+  });
+
+  const ids = (markets: HIP4Market[]) => markets.map((m) => m.outcomeId);
+
+  it("keeps catalog order without sortBy", async () => {
+    expect(ids(await adapter.fetchMarkets())).toEqual([10, 11, 12]);
+  });
+
+  it("newest puts the highest outcome id first", async () => {
+    expect(ids(await adapter.fetchMarkets({ sortBy: "newest" }))).toEqual([
+      12, 11, 10,
+    ]);
+  });
+
+  it("expiry puts the soonest event first and markets without one last", async () => {
+    expect(ids(await adapter.fetchMarkets({ sortBy: "expiry" }))).toEqual([
+      11, 10, 12,
+    ]);
+  });
+
+  it("volume sums both sides and puts the highest first", async () => {
+    expect(ids(await adapter.fetchMarkets({ sortBy: "volume" }))).toEqual([
+      12, 10, 11,
+    ]);
+    expect(client.fetchSpotAssetCtxs).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies limit after sorting", async () => {
+    expect(
+      ids(await adapter.fetchMarkets({ sortBy: "newest", limit: 1 })),
+    ).toEqual([12]);
+  });
+});
+
+describe("fetchMarkets sortBy expiry with metadata tags", () => {
+  it("reads event times through a glued metadata tag", async () => {
+    const meta: HLOutcomeMeta = {
+      outcomes: [
+        {
+          outcome: 30,
+          name: "template:priceTouch",
+          description:
+            "perp:BTC|target:90000 metadata=category:economics|time:20261101-0000",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+        {
+          outcome: 31,
+          name: "template:priceTouch",
+          description:
+            "perp:ETH|target:5000|time:20261015-1200 metadata=category:price|subCategory:N/A",
+          sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+        },
+        {
+          outcome: 32,
+          name: "Plain market",
+          description: "No event time.",
+          sideSpecs: [{ name: "Yes" }, { name: "No" }],
+        },
+      ],
+      questions: [],
+    };
+    const client = {
+      ...createTemplateClient(),
+      fetchOutcomeMeta: vi.fn().mockResolvedValue(meta),
+    } as unknown as HIP4Client;
+    const adapter = new HIP4EventAdapter(client);
+    const sorted = await adapter.fetchMarkets({ sortBy: "expiry" });
+    expect((sorted as HIP4Market[]).map((m) => m.outcomeId)).toEqual([
+      31, 30, 32,
+    ]);
   });
 });

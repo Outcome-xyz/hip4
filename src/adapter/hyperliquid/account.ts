@@ -59,7 +59,8 @@ function mapSpotBalance(
   const entryNtl = toDecimal(bal.entryNtl);
   const avgCost = isZero(bal.total) ? "0" : div(bal.entryNtl, bal.total);
 
-  const mid = allMids[coin];
+  // Spot balances name side coins "+<coin>"; mids use "#<coin>".
+  const mid = allMids[coin.replace(/^\+/, "#")];
   const currentPrice = mid ?? "0";
   const unrealizedPnl = mul(sub(currentPrice, avgCost), bal.total);
   const potentialPayout = bal.total;

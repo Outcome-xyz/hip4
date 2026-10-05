@@ -27,7 +27,8 @@ import {
   parseDescription,
   parsePriceBucketDescription,
 } from "./market-discovery";
-import type { HLOutcome, HLQuestion } from "./types";
+import { renderOutcomeDisplay, renderTemplateDisplay } from "./template-display";
+import type { HLOutcome, HLOutcomeTemplate, HLQuestion } from "./types";
 
 const PREDICTION_ASSET_OFFSET = 100_000_000;
 
@@ -35,21 +36,43 @@ const PREDICTION_ASSET_OFFSET = 100_000_000;
 // Side builder
 // ---------------------------------------------------------------------------
 
-function buildSides(outcome: HLOutcome): [MarketSide, MarketSide] {
+function buildSides(
+  outcome: HLOutcome,
+  names: [string, string],
+): [MarketSide, MarketSide] {
   return [
     {
-      name: outcome.sideSpecs[0]?.name ?? "Side 0",
+      name: names[0],
       coinNum: outcome.outcome * 10,
       coin: `#${outcome.outcome * 10}`,
       asset: PREDICTION_ASSET_OFFSET + outcome.outcome * 10,
     },
     {
-      name: outcome.sideSpecs[1]?.name ?? "Side 1",
+      name: names[1],
       coinNum: outcome.outcome * 10 + 1,
       coin: `#${outcome.outcome * 10 + 1}`,
       asset: PREDICTION_ASSET_OFFSET + outcome.outcome * 10 + 1,
     },
   ];
+}
+
+/**
+ * Names for display. Template markets are rendered from the registry; other
+ * markets keep the names they have on the wire.
+ */
+function displayNames(
+  outcome: HLOutcome,
+  entry: QuestionEntry | undefined,
+  templates: readonly HLOutcomeTemplate[],
+): { name: string; sideNames: [string, string]; questionName: string | undefined } {
+  const own = renderOutcomeDisplay(outcome, templates, entry?.isFallback === true);
+  return {
+    name: own.name,
+    sideNames: own.sideNames,
+    questionName: entry
+      ? renderTemplateDisplay(entry.question, templates).name
+      : undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +157,7 @@ function buildPriceBucketMarket(
   sides: [MarketSide, MarketSide],
   entry: QuestionEntry,
   bucket: ParsedPriceBucketDescription,
+  names: { name: string; questionName: string | undefined },
 ): PriceBucketMarket {
   const { lowerBound, upperBound } = getPriceBucketBounds(
     bucket.priceThresholds,
@@ -142,7 +166,7 @@ function buildPriceBucketMarket(
   return {
     type: "priceBucket",
     outcomeId: outcome.outcome,
-    name: outcome.name,
+    name: names.name,
     description: outcome.description,
     sides,
     raw: outcome,
@@ -151,7 +175,7 @@ function buildPriceBucketMarket(
     priceThresholds: bucket.priceThresholds,
     period: bucket.period,
     questionId: entry.question.question,
-    questionName: entry.question.name,
+    questionName: names.questionName ?? entry.question.name,
     questionDescription: entry.question.description,
     isFallback: entry.isFallback,
     bucketIndex: entry.bucketIndex,
@@ -173,6 +197,9 @@ function buildPriceBucketMarket(
  *   2. Outcome is in a question → multiOutcome (or priceBucket)
  *   3. Everything else → labelledBinary
  *
+ * Pass the `outcomeTemplates` registry to render readable names for template
+ * markets. Without it, names are kept as they are on the wire.
+ *
  * For batch classification, prefer `classifyAllOutcomes` (builds the index
  * once). When calling `classifyOutcome` repeatedly, pass a pre-built
  * `precomputedIndex` to avoid rebuilding it on every call:
@@ -184,9 +211,12 @@ export function classifyOutcome(
   outcome: HLOutcome,
   questions: HLQuestion[],
   precomputedIndex?: QuestionIndex,
+  templates: readonly HLOutcomeTemplate[] = [],
 ): HIP4Market {
-  const sides = buildSides(outcome);
   const index = precomputedIndex ?? buildQuestionIndex(questions);
+  const questionEntry = index.byOutcome.get(outcome.outcome);
+  const names = displayNames(outcome, questionEntry, templates);
+  const sides = buildSides(outcome, names.sideNames);
 
   // 1. Try priceBinary
   const parsed = parseDescription(outcome.description);
@@ -207,7 +237,6 @@ export function classifyOutcome(
   }
 
   // 2. Check if in a question
-  const questionEntry = index.byOutcome.get(outcome.outcome);
   if (questionEntry) {
     if (questionEntry.bucket) {
       return buildPriceBucketMarket(
@@ -215,17 +244,18 @@ export function classifyOutcome(
         sides,
         questionEntry,
         questionEntry.bucket,
+        names,
       );
     }
     const market: MultiOutcomeMarket = {
       type: "multiOutcome",
       outcomeId: outcome.outcome,
-      name: outcome.name,
+      name: names.name,
       description: outcome.description,
       sides,
       raw: outcome,
       questionId: questionEntry.question.question,
-      questionName: questionEntry.question.name,
+      questionName: names.questionName ?? questionEntry.question.name,
       questionDescription: questionEntry.question.description,
       isFallback: questionEntry.isFallback,
       rawQuestion: questionEntry.question,
@@ -237,7 +267,7 @@ export function classifyOutcome(
   const market: LabelledBinaryMarket = {
     type: "labelledBinary",
     outcomeId: outcome.outcome,
-    name: outcome.name,
+    name: names.name,
     description: outcome.description,
     sides,
     raw: outcome,
@@ -252,59 +282,10 @@ export function classifyOutcome(
 export function classifyAllOutcomes(
   outcomes: HLOutcome[],
   questions: HLQuestion[],
+  templates: readonly HLOutcomeTemplate[] = [],
 ): HIP4Market[] {
   const index = buildQuestionIndex(questions);
-  return outcomes.map((outcome) => {
-    const sides = buildSides(outcome);
-    const parsed = parseDescription(outcome.description);
-
-    if (parsed) {
-      return {
-        type: "defaultBinary",
-        outcomeId: outcome.outcome,
-        name: `${parsed.underlying} > $${parsed.targetPrice} (${parsed.period})`,
-        description: `Will ${parsed.underlying} be above $${parsed.targetPrice} by expiry?`,
-        sides,
-        raw: outcome,
-        underlying: parsed.underlying,
-        targetPrice: parsed.targetPrice,
-        expiry: parsed.expiry,
-        period: parsed.period,
-      } satisfies DefaultBinaryMarket;
-    }
-
-    const questionEntry = index.byOutcome.get(outcome.outcome);
-    if (questionEntry) {
-      if (questionEntry.bucket) {
-        return buildPriceBucketMarket(
-          outcome,
-          sides,
-          questionEntry,
-          questionEntry.bucket,
-        );
-      }
-      return {
-        type: "multiOutcome",
-        outcomeId: outcome.outcome,
-        name: outcome.name,
-        description: outcome.description,
-        sides,
-        raw: outcome,
-        questionId: questionEntry.question.question,
-        questionName: questionEntry.question.name,
-        questionDescription: questionEntry.question.description,
-        isFallback: questionEntry.isFallback,
-        rawQuestion: questionEntry.question,
-      } satisfies MultiOutcomeMarket;
-    }
-
-    return {
-      type: "labelledBinary",
-      outcomeId: outcome.outcome,
-      name: outcome.name,
-      description: outcome.description,
-      sides,
-      raw: outcome,
-    } satisfies LabelledBinaryMarket;
-  });
+  return outcomes.map((outcome) =>
+    classifyOutcome(outcome, questions, index, templates),
+  );
 }

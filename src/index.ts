@@ -89,6 +89,7 @@ export {
   createHIP4Adapter,
   discoverPriceBinaryMarkets,
   formatMarketLabel,
+  formatOutcomePrice,
   formatPredictionPrice,
   formatPrice,
   ALL_DEXS,

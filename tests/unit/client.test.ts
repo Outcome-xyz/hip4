@@ -45,12 +45,8 @@ describe("HIP4Client", () => {
       const client = new HIP4Client();
 
       expect(client.testnet).toBe(true);
-      expect(client.infoUrl).toBe(
-        "https://api-ui.hyperliquid-testnet.xyz/info",
-      );
-      expect(client.exchangeUrl).toBe(
-        "https://api-ui.hyperliquid-testnet.xyz/exchange",
-      );
+      expect(client.infoUrl).toBe("https://api-ui.hyperliquid-testnet.xyz/info");
+      expect(client.exchangeUrl).toBe("https://api-ui.hyperliquid-testnet.xyz/exchange");
       expect(client.wsUrl).toBe("wss://api-ui.hyperliquid-testnet.xyz/ws");
     });
 
