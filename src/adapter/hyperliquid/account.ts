@@ -31,11 +31,31 @@ interface SpotBalance {
   entryNtl: string;
 }
 
+interface PositionNames {
+  eventTitle: string;
+  parsedEventTitle?: string;
+  marketQuestion: string;
+  parsedMarketQuestion?: string;
+}
+
+function sideName(
+  parsed: { outcomeId: number; sideIndex: number } | null,
+  coin: string,
+  resolve?: SideNameResolver,
+): string {
+  if (parsed && resolve) {
+    const names = resolve(parsed.outcomeId);
+    return names ? names[parsed.sideIndex] : `Side ${parsed.sideIndex}`;
+  }
+  return parsed ? `Side ${parsed.sideIndex}` : coin;
+}
+
 function mapSpotBalance(
   bal: SpotBalance,
   allMids: Record<string, string>,
-  nameMap: Map<string, { eventTitle: string; marketQuestion: string }>,
+  nameMap: Map<string, PositionNames>,
   resolveSideNames?: SideNameResolver,
+  resolveParsedSideNames?: SideNameResolver,
 ): PredictionPosition | null {
   const coin = bal.coin;
   if (!isOutcomeCoin(coin)) return null;
@@ -48,13 +68,10 @@ function mapSpotBalance(
   const outcome = coin;
 
   const parsed = parseSideCoin(coin);
-  let outcomeName: string;
-  if (parsed && resolveSideNames) {
-    const names = resolveSideNames(parsed.outcomeId);
-    outcomeName = names ? names[parsed.sideIndex] : `Side ${parsed.sideIndex}`;
-  } else {
-    outcomeName = parsed ? `Side ${parsed.sideIndex}` : coin;
-  }
+  const outcomeName = sideName(parsed, coin, resolveSideNames);
+  const parsedOutcomeName = resolveParsedSideNames
+    ? sideName(parsed, coin, resolveParsedSideNames)
+    : outcomeName;
 
   const entryNtl = toDecimal(bal.entryNtl);
   const avgCost = isZero(bal.total) ? "0" : div(bal.entryNtl, bal.total);
@@ -69,9 +86,13 @@ function mapSpotBalance(
   return {
     marketId,
     eventTitle: names?.eventTitle ?? "",
+    parsedEventTitle: names?.parsedEventTitle ?? names?.eventTitle ?? "",
     marketQuestion: names?.marketQuestion ?? "",
+    parsedMarketQuestion:
+      names?.parsedMarketQuestion ?? names?.marketQuestion ?? "",
     outcome,
     outcomeName,
+    parsedOutcomeName,
     shares: fixed(bal.total, 6),
     avgCost: fixed(avgCost, 6),
     currentPrice,
@@ -101,13 +122,16 @@ function mapFill(raw: HLFill): PredictionActivity | null {
 
 export class HIP4AccountAdapter implements PredictionAccountAdapter {
   private readonly resolveSideNames?: SideNameResolver;
+  private readonly resolveParsedSideNames?: SideNameResolver;
 
   constructor(
     private readonly client: HIP4Client,
     private readonly events?: EventDataSource,
     resolveSideNames?: SideNameResolver,
+    resolveParsedSideNames?: SideNameResolver,
   ) {
     this.resolveSideNames = resolveSideNames;
+    this.resolveParsedSideNames = resolveParsedSideNames;
   }
 
   async fetchPositions(address: string): Promise<PredictionPosition[]> {
@@ -122,10 +146,15 @@ export class HIP4AccountAdapter implements PredictionAccountAdapter {
         Promise.resolve([] as PredictionEvent[]),
     ]);
 
-    const nameMap = new Map<string, { eventTitle: string; marketQuestion: string }>();
+    const nameMap = new Map<string, PositionNames>();
     for (const event of eventList) {
       for (const market of event.markets) {
-        nameMap.set(market.id, { eventTitle: event.title, marketQuestion: market.question });
+        nameMap.set(market.id, {
+          eventTitle: event.title,
+          parsedEventTitle: event.parsedTitle,
+          marketQuestion: market.question,
+          parsedMarketQuestion: market.parsedQuestion,
+        });
       }
     }
 
@@ -134,7 +163,13 @@ export class HIP4AccountAdapter implements PredictionAccountAdapter {
       if (!isOutcomeCoin(bal.coin)) continue;
       if (isZero(bal.total)) continue;
 
-      const mapped = mapSpotBalance(bal, allMids, nameMap, this.resolveSideNames);
+      const mapped = mapSpotBalance(
+        bal,
+        allMids,
+        nameMap,
+        this.resolveSideNames,
+        this.resolveParsedSideNames,
+      );
       if (mapped) positions.push(mapped);
     }
 

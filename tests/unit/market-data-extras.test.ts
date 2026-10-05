@@ -310,6 +310,51 @@ describe("WebSocket subscriptions", () => {
     expect(price.outcomes[1].price).toBe("0.45");
   });
 
+  it("subscribePrice reports wire names in name and rendered ones in parsedName", () => {
+    const client = createRealClient();
+    const adapter = new HIP4MarketDataAdapter(
+      client,
+      () => ["template:Yes", "template:No"],
+      undefined,
+      () => ["Yes", "No"],
+    );
+    const cb = vi.fn();
+
+    adapter.subscribePrice("1758", cb);
+    getWs()._receiveMessage({
+      channel: "allMids",
+      data: { mids: { "#17580": "0.55", "#17581": "0.45" } },
+    });
+
+    const price = cb.mock.calls[0][0];
+    expect(price.outcomes.map((o: { name: string }) => o.name)).toEqual([
+      "template:Yes",
+      "template:No",
+    ]);
+    expect(price.outcomes.map((o: { parsedName: string }) => o.parsedName)).toEqual([
+      "Yes",
+      "No",
+    ]);
+  });
+
+  it("subscribePrice parsedName falls back to name without a parsed resolver", () => {
+    const client = createRealClient();
+    const adapter = new HIP4MarketDataAdapter(client, () => ["Hypurr", "Bolt"]);
+    const cb = vi.fn();
+
+    adapter.subscribePrice("1758", cb);
+    getWs()._receiveMessage({
+      channel: "allMids",
+      data: { mids: { "#17580": "0.55", "#17581": "0.45" } },
+    });
+
+    const price = cb.mock.calls[0][0];
+    expect(price.outcomes.map((o: { parsedName: string }) => o.parsedName)).toEqual([
+      "Hypurr",
+      "Bolt",
+    ]);
+  });
+
   it("routes trades message to subscribeTrades callback", () => {
     const client = createRealClient();
     const adapter = new HIP4MarketDataAdapter(client);

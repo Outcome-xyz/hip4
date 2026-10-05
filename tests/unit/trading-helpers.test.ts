@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HIP4Auth } from "../../src/adapter/hyperliquid/auth";
 import type { HIP4Client } from "../../src/adapter/hyperliquid/client";
+import { formatOutcomePrice } from "../../src/adapter/hyperliquid/pricing";
 import { HIP4TradingAdapter } from "../../src/adapter/hyperliquid/trading";
 import type {
   HIP4Signer,
@@ -145,6 +146,26 @@ describe("formatPrice (via limit orders)", () => {
 
   it("rounds 0.012345 to 5 decimals (the exchange's price tick)", async () => {
     expect(await getOrderPrice("0.012345", "2000")).toBe("0.01235");
+  });
+
+  it("rounds batch limit prices to 5 decimals too", async () => {
+    (client.placeOrder as ReturnType<typeof vi.fn>).mockClear();
+    await adapter.placeOrders([
+      {
+        marketId: "1758",
+        outcome: "Yes",
+        side: "buy",
+        type: "limit",
+        price: "0.012345",
+        amount: "2000",
+      },
+    ]);
+    const call = (client.placeOrder as ReturnType<typeof vi.fn>).mock.calls.at(-1);
+    expect(call![0].orders[0].p).toBe("0.01235");
+  });
+
+  it("sends a price already rounded with formatOutcomePrice as is", async () => {
+    expect(await getOrderPrice(formatOutcomePrice("0.012345"), "2000")).toBe("0.01235");
   });
 
   it("formats 0.10 as '0.1' (trailing zero removed)", async () => {
@@ -466,15 +487,16 @@ describe("request-level rejections", () => {
     };
   }
 
-  it("returns Hyperliquid's message", async () => {
+  it("keeps the generic error and adds Hyperliquid's message in raw", async () => {
     const message = "User or API Wallet 0xabc does not exist.";
     const { single, batch } = await placeWith({ status: "err", response: message });
-    expect(single).toEqual({ success: false, error: message });
-    expect(batch.results[0]).toEqual({ success: false, error: message });
+    const expected = { success: false, error: "Exchange returned non-ok status", raw: message };
+    expect(single).toEqual(expected);
+    expect(batch.results[0]).toEqual(expected);
   });
 
-  it("falls back to a generic message when there is none", async () => {
+  it("leaves raw unset when there is no message", async () => {
     const { single } = await placeWith({ status: "err" });
-    expect(single.error).toBe("Exchange returned non-ok status");
+    expect(single).toEqual({ success: false, error: "Exchange returned non-ok status" });
   });
 });

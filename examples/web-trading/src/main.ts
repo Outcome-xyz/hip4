@@ -44,7 +44,10 @@ function button(label: string, onClick: () => void, active = false): HTMLButtonE
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const price = (coin: string) => (mids[coin] ? percent.format(Number(mids[coin])) : "-");
 const cents = (value: string) => `${centsFormat.format(Number(value) * 100)}c`;
-const titleOf = (market: HIP4Market) => ("questionName" in market ? market.questionName : market.name);
+// Template markets carry readable names in the parsed fields.
+const nameOf = (market: HIP4Market) => market.parsedName ?? market.name;
+const titleOf = (market: HIP4Market) =>
+  "questionName" in market ? (market.parsedQuestionName ?? market.questionName) : nameOf(market);
 const current = () => events.find((options) => options[0]!.outcomeId === selected?.id);
 
 /** A price typed in cents, "61.5", as the order price "0.615". */
@@ -104,12 +107,12 @@ function renderMarket(): void {
   panel.replaceChildren(
     el("h2", {}, titleOf(options[0]!)),
     options.length > 1
-      ? el("div", { className: "choices" }, ...options.map((m, i) => button(m.name, () => choose(i, 0), i === option)))
+      ? el("div", { className: "choices" }, ...options.map((m, i) => button(nameOf(m), () => choose(i, 0), i === option)))
       : "",
     el(
       "div",
       { className: "choices" },
-      ...options[option]!.sides.map((s, i) => button(`${s.name} ${price(s.coin)}`, () => choose(option, i), i === side)),
+      ...options[option]!.sides.map((s, i) => button(`${s.parsedName ?? s.name} ${price(s.coin)}`, () => choose(option, i), i === side)),
     ),
     book,
     ticket(),
@@ -168,7 +171,7 @@ function ticket(): HTMLFormElement {
       ...(BUILDER && { builderAddress: BUILDER.address, builderFee: BUILDER.fee }),
     });
     note.textContent = !result.success
-      ? `Order failed: ${result.error}`
+      ? `Order failed: ${result.raw ?? result.error}`
       : result.status === "filled"
         ? `Filled ${result.shares} shares.`
         : "Order placed. It rests on the book until it fills or you cancel it.";
@@ -258,7 +261,9 @@ function coinName(coin: string): string {
   for (const options of events) {
     for (const market of options) {
       const side = market.sides.find((s) => s.coin === coin);
-      if (side) return options.length > 1 ? `${titleOf(market)}: ${market.name} ${side.name}` : `${market.name}: ${side.name}`;
+      if (!side) continue;
+      const sideName = side.parsedName ?? side.name;
+      return options.length > 1 ? `${titleOf(market)}: ${nameOf(market)} ${sideName}` : `${nameOf(market)}: ${sideName}`;
     }
   }
   return coin;

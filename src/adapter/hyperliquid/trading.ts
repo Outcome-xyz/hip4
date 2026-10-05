@@ -180,13 +180,13 @@ function interpretStatus(
 }
 
 /**
- * Hyperliquid's message for a rejected request. On `status: "err"` the
- * exchange returns it as a plain string in `response`.
+ * A rejected request's result. On `status: "err"` Hyperliquid returns its
+ * message as a plain string in `response`, kept in `raw`.
  */
-function exchangeError(res: { response?: unknown }): string {
+function exchangeError(res: { response?: unknown }): PredictionOrderResult {
   return typeof res.response === "string" && res.response.length > 0
-    ? res.response
-    : "Exchange returned non-ok status";
+    ? { success: false, error: "Exchange returned non-ok status", raw: res.response }
+    : { success: false, error: "Exchange returned non-ok status" };
 }
 
 // ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
-        return { success: false, error: exchangeError(res) };
+        return exchangeError(res);
       }
 
       const firstStatus = res.response.data.statuses[0];
@@ -440,9 +440,9 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
-        const error = exchangeError(res);
+        const rejected = exchangeError(res);
         for (const idx of wireToInputIndex) {
-          results[idx] = { success: false, error };
+          results[idx] = { ...rejected };
         }
         return { success: false, results };
       }

@@ -99,18 +99,20 @@ function mapOutcomeToMarket(
   const display = renderOutcomeDisplay(outcome, templates, isFallback);
   const outcomes: PredictionOutcome[] = outcome.sideSpecs.map(
     (spec, sideIndex) => ({
-      name: (display.sideNames as readonly string[])[sideIndex] ?? spec.name,
+      name: spec.name,
+      parsedName:
+        (display.sideNames as readonly string[])[sideIndex] ?? spec.name,
       tokenId: sideCoin(outcome.outcome, sideIndex),
       price: "0",
     }),
   );
+  const recurring = isRecurring(outcome) ? recurringDescription(outcome) : null;
 
   return {
     id: String(outcome.outcome),
     eventId,
-    question: isRecurring(outcome)
-      ? recurringDescription(outcome)
-      : display.name,
+    question: recurring ?? outcome.name,
+    parsedQuestion: recurring ?? display.name,
     outcomes,
     volume: "0",
     liquidity: "0",
@@ -139,7 +141,8 @@ function mapQuestionToEvent(
 
   return {
     id: eventId,
-    title: renderTemplateDisplay(question, templates).name,
+    title: question.name,
+    parsedTitle: renderTemplateDisplay(question, templates).name,
     description: question.description,
     category: "custom",
     markets,
@@ -158,7 +161,8 @@ function mapStandaloneOutcomeToEvent(
 
   return {
     id: eventId,
-    title: recurring
+    title: recurring ? recurringTitle(outcome) : outcome.name,
+    parsedTitle: recurring
       ? recurringTitle(outcome)
       : renderTemplateDisplay(outcome, templates).name,
     description: recurring
@@ -202,16 +206,26 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
   private templatesInflight: Promise<HLOutcomeTemplate[]> | null = null;
 
   /**
-   * Rendered side names from outcomeMeta. Built on first use and rebuilt on
-   * every market or event cache refresh, so names follow the template registry.
+   * Side names from outcomeMeta, as sent and rendered. Built on first use and
+   * rebuilt on every market or event cache refresh, so the rendered names
+   * follow the template registry.
    */
   private sideNames: Map<number, [string, string]> | null = null;
+  private parsedSideNames: Map<number, [string, string]> | null = null;
 
   constructor(private readonly client: HIP4Client) {}
 
   /** Returns a resolver function that looks up side names by outcome ID. */
   getSideNameResolver(): SideNameResolver {
     return (outcomeId: number) => this.sideNames?.get(outcomeId) ?? null;
+  }
+
+  /**
+   * Like `getSideNameResolver`, with template side names rendered from the
+   * `outcomeTemplates` registry ("template:Yes" reads "Yes").
+   */
+  getParsedSideNameResolver(): SideNameResolver {
+    return (outcomeId: number) => this.parsedSideNames?.get(outcomeId) ?? null;
   }
 
   /** Ensure sideNames are loaded. Call before using the resolver if data may not be cached yet. */
@@ -259,12 +273,16 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
   private applyMetaUpdate(update: HLWsOutcomeMetaUpdate): void {
     if ("outcomeCreated" in update) {
       const spec = update.outcomeCreated;
-      // Grow sideNames in place so callers using getSideNameResolver pick
-      // up the new outcome immediately. Each cache refresh builds a fresh
-      // map with populateSideNames and swaps it in.
+      // Grow the side name maps in place so callers using the resolvers pick
+      // up the new outcome immediately. Each cache refresh builds fresh maps
+      // with populateSideNames and swaps them in.
       if (this.sideNames && spec.sideSpecs.length >= 2) {
         const templates = this.templatesCache?.templates ?? [];
-        this.sideNames.set(
+        this.sideNames.set(spec.outcome, [
+          spec.sideSpecs[0].name,
+          spec.sideSpecs[1].name,
+        ]);
+        this.parsedSideNames?.set(
           spec.outcome,
           renderTemplateDisplay(spec, templates).sideNames,
         );
@@ -281,12 +299,15 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
     templates: readonly HLOutcomeTemplate[],
   ): void {
     const names = new Map<number, [string, string]>();
+    const parsed = new Map<number, [string, string]>();
     for (const o of meta.outcomes) {
       if (o.sideSpecs.length >= 2) {
-        names.set(o.outcome, renderTemplateDisplay(o, templates).sideNames);
+        names.set(o.outcome, [o.sideSpecs[0].name, o.sideSpecs[1].name]);
+        parsed.set(o.outcome, renderTemplateDisplay(o, templates).sideNames);
       }
     }
     this.sideNames = names;
+    this.parsedSideNames = parsed;
   }
 
   async fetchEvents(

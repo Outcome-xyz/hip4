@@ -71,14 +71,17 @@ export class HIP4MarketDataAdapter implements PredictionMarketDataAdapter {
   private static readonly MIDS_CACHE_TTL = 5_000;
 
   private readonly resolveSideNames: SideNameResolver;
+  private readonly resolveParsedSideNames: SideNameResolver;
   private readonly ensureSideNames?: () => Promise<void>;
 
   constructor(
     private readonly client: HIP4Client,
     resolveSideNames?: SideNameResolver,
     ensureSideNames?: () => Promise<void>,
+    resolveParsedSideNames?: SideNameResolver,
   ) {
     this.resolveSideNames = resolveSideNames ?? (() => null);
+    this.resolveParsedSideNames = resolveParsedSideNames ?? this.resolveSideNames;
     this.ensureSideNames = ensureSideNames;
   }
 
@@ -97,11 +100,17 @@ export class HIP4MarketDataAdapter implements PredictionMarketDataAdapter {
     return this.resolveSideNames(outcomeId) ?? ["Side 0", "Side 1"];
   }
 
+  private parsedSideNamesFor(marketId: string): [string, string] {
+    const outcomeId = parseInt(marketId, 10);
+    return this.resolveParsedSideNames(outcomeId) ?? this.sideNamesFor(marketId);
+  }
+
   async fetchPrice(marketId: string): Promise<PredictionPrice> {
     await this.ensureSideNames?.();
     const outcomeId = parseInt(marketId, 10);
     const mids = await this.getMids();
     const [name0, name1] = this.sideNamesFor(marketId);
+    const [parsed0, parsed1] = this.parsedSideNamesFor(marketId);
 
     const side0Coin = sideCoin(outcomeId, 0);
     const side1Coin = sideCoin(outcomeId, 1);
@@ -112,8 +121,8 @@ export class HIP4MarketDataAdapter implements PredictionMarketDataAdapter {
     return {
       marketId,
       outcomes: [
-        { name: name0, price: side0Mid, midpoint: side0Mid },
-        { name: name1, price: side1Mid, midpoint: side1Mid },
+        { name: name0, parsedName: parsed0, price: side0Mid, midpoint: side0Mid },
+        { name: name1, parsedName: parsed1, price: side1Mid, midpoint: side1Mid },
       ],
       timestamp: Date.now(),
     };
@@ -199,17 +208,20 @@ export class HIP4MarketDataAdapter implements PredictionMarketDataAdapter {
       // Resolve names on each callback so we pick up sideSpec names
       // once they're loaded (may be "Side 0"/"Side 1" on first tick)
       const [n0, n1] = this.sideNamesFor(marketId);
+      const [p0, p1] = this.parsedSideNamesFor(marketId);
 
       onData({
         marketId,
         outcomes: [
           {
             name: n0,
+            parsedName: p0,
             price: side0Mid ?? "0",
             midpoint: side0Mid ?? "0",
           },
           {
             name: n1,
+            parsedName: p1,
             price: side1Mid ?? "0",
             midpoint: side1Mid ?? "0",
           },

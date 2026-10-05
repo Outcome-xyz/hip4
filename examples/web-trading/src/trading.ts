@@ -22,7 +22,7 @@ export const BUILDER: { address: Address; fee: number } | null = null;
 
 // Shown in the user's API wallets on Hyperliquid. Approving the same name again
 // replaces the previous agent.
-const AGENT_NAME = "Acme Games";
+const AGENT_NAME = "OUTsdk";
 
 // Hyperliquid signs approvals for Arbitrum, or Arbitrum Sepolia on testnet.
 const isMainnet = !hip4.client.testnet;
@@ -33,9 +33,18 @@ export async function connectWallet() {
   const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
   if (!account) throw new Error("The wallet returned no account.");
   const wallet = createWalletClient({ account, chain: signingChain, transport: custom(window.ethereum) });
-  // Wallets only sign for the chain they're on.
+  // Wallets only sign for the chain they're on. If the wallet doesn't know the
+  // chain yet, add it, then switch again: adding a chain doesn't always switch to it.
   if ((await wallet.getChainId()) !== signingChain.id) {
-    await wallet.switchChain({ id: signingChain.id }).catch(() => wallet.addChain({ chain: signingChain }));
+    try {
+      await wallet.switchChain({ id: signingChain.id });
+    } catch {
+      await wallet.addChain({ chain: signingChain });
+      await wallet.switchChain({ id: signingChain.id });
+    }
+    if ((await wallet.getChainId()) !== signingChain.id) {
+      throw new Error(`Switch your wallet to ${signingChain.name} to trade.`);
+    }
   }
   return wallet;
 }

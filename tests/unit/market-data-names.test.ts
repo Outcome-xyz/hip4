@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HIP4Client } from "../../src/adapter/hyperliquid/client";
-import type { SideNameResolver } from "../../src/adapter/hyperliquid/events";
+import { HIP4Client } from "../../src/adapter/hyperliquid/client";
+import {
+  HIP4EventAdapter,
+  type SideNameResolver,
+} from "../../src/adapter/hyperliquid/events";
+import { HyperliquidHip4Adapter } from "../../src/adapter/hyperliquid";
 import { HIP4MarketDataAdapter } from "../../src/adapter/hyperliquid/market-data";
 
 function mockClient(): HIP4Client {
@@ -54,6 +58,79 @@ describe("Market data side name resolution", () => {
     await adapter.fetchPrice("10");
 
     expect(ensureFn).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Market data parsed side names", () => {
+  const wire: SideNameResolver = (id) =>
+    id === 10 ? ["template:Yes", "template:No"] : null;
+  const parsed: SideNameResolver = (id) => (id === 10 ? ["Yes", "No"] : null);
+
+  it("fetchPrice keeps wire names in name and rendered ones in parsedName", async () => {
+    const adapter = new HIP4MarketDataAdapter(
+      mockClient(),
+      wire,
+      undefined,
+      parsed,
+    );
+    const price = await adapter.fetchPrice("10");
+
+    expect(price.outcomes.map((o) => o.name)).toEqual([
+      "template:Yes",
+      "template:No",
+    ]);
+    expect(price.outcomes.map((o) => o.parsedName)).toEqual(["Yes", "No"]);
+  });
+
+  it("parsedName falls back to the wire resolver when no parsed resolver is given", async () => {
+    const adapter = new HIP4MarketDataAdapter(mockClient(), wire);
+    const price = await adapter.fetchPrice("10");
+
+    expect(price.outcomes.map((o) => o.parsedName)).toEqual([
+      "template:Yes",
+      "template:No",
+    ]);
+  });
+
+  it("parsedName falls back to the wire names when the parsed resolver knows no outcome", async () => {
+    const adapter = new HIP4MarketDataAdapter(
+      mockClient(),
+      wire,
+      undefined,
+      () => null,
+    );
+    const price = await adapter.fetchPrice("10");
+
+    expect(price.outcomes.map((o) => o.parsedName)).toEqual([
+      "template:Yes",
+      "template:No",
+    ]);
+  });
+
+  it("parsedName falls back to Side 0/Side 1 when nothing resolves", async () => {
+    const adapter = new HIP4MarketDataAdapter(mockClient());
+    const price = await adapter.fetchPrice("10");
+
+    expect(price.outcomes.map((o) => o.parsedName)).toEqual(["Side 0", "Side 1"]);
+  });
+
+  it("HyperliquidHip4Adapter wires the wire and parsed resolvers to market data", async () => {
+    const events = HIP4EventAdapter.prototype;
+    vi.spyOn(events, "getSideNameResolver").mockReturnValue(wire);
+    vi.spyOn(events, "getParsedSideNameResolver").mockReturnValue(parsed);
+    vi.spyOn(events, "ensureSideNames").mockResolvedValue(undefined);
+    vi.spyOn(HIP4Client.prototype, "fetchAllMids").mockResolvedValue({
+      "#100": "0.65",
+      "#101": "0.35",
+    });
+
+    const adapter = new HyperliquidHip4Adapter({ testnet: true });
+    const price = await adapter.marketData.fetchPrice("10");
+
+    expect(price.outcomes[0].name).toBe("template:Yes");
+    expect(price.outcomes[0].parsedName).toBe("Yes");
+    expect(price.outcomes[1].parsedName).toBe("No");
+    vi.restoreAllMocks();
   });
 });
 

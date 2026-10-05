@@ -3,6 +3,8 @@ export interface PredictionEvent {
   /** Unique event ID (e.g. "q123" for questions, "o456" for standalone outcomes). */
   id: string;
   title: string;
+  /** Readable title. Template markets are rendered from the `outcomeTemplates` registry; others repeat `title`. */
+  parsedTitle?: string;
   description: string;
   category: string;
   markets: PredictionMarket[];
@@ -25,6 +27,8 @@ export interface PredictionMarket {
   id: string;
   eventId: string;
   question: string;
+  /** Readable question, rendered like `PredictionEvent.parsedTitle` */
+  parsedQuestion?: string;
   outcomes: PredictionOutcome[];
   volume: string;
   liquidity: string;
@@ -35,6 +39,8 @@ export interface PredictionMarket {
 /** One side of a prediction market (e.g. "Yes" or "No"). */
 export interface PredictionOutcome {
   name: string;
+  /** Readable name. Template sides are rendered ("template:Yes" reads "Yes"); others repeat `name`. */
+  parsedName?: string;
   /** The spot token ID used for trading this outcome. */
   tokenId: string;
   /** Current price as a decimal string (0-1). */

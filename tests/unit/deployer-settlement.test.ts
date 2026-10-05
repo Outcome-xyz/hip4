@@ -7,6 +7,7 @@ import {
   eventAtFrom,
   perpFrom,
   readDeployedOutcome,
+  readDeployedOutcomes,
   resolutionDeadlineFrom,
   scalarBandFrom,
   thresholdFrom,
@@ -159,6 +160,58 @@ describe("readDeployedOutcome", () => {
   it("decodes a market that carries no keywords at all", () => {
     const decoded = readDeployedOutcome(UNDATED);
     expect(decoded).toMatchObject({ templateId: null, eventAt: null, perp: null });
+  });
+});
+
+describe("readDeployedOutcome with a glued metadata tag", () => {
+  const NOV_1 = Date.UTC(2026, 10, 1, 0, 0);
+  const TAGGED_TIME: HLOutcome = {
+    outcome: 13000,
+    name: "template:binaryPrice4",
+    description:
+      "perp:BTC|time:20261101-0000 metadata=category:price|subCategory:N/A",
+    sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+  };
+  const TAGGED_THRESHOLD: HLOutcome = {
+    outcome: 13001,
+    name: "template:binaryPrice4",
+    description:
+      "perp:BTC|threshold:65000 metadata=category:economics|time:20261101-0000",
+    sideSpecs: [{ name: "template:Yes" }, { name: "template:No" }],
+  };
+  const DECLARED = new Set(["perp", "threshold", "time"]);
+
+  it("cuts the tag by default", () => {
+    const decoded = readDeployedOutcome(TAGGED_TIME);
+    expect(decoded.keywords.time).toBe("20261101-0000");
+    expect(decoded.eventAt?.getTime()).toBe(NOV_1);
+  });
+
+  it("cuts the tag from a mid-string value by default", () => {
+    const decoded = readDeployedOutcome(TAGGED_THRESHOLD);
+    expect(decoded.threshold).toBe("65000");
+    expect(decoded.eventAt?.getTime()).toBe(NOV_1);
+  });
+
+  it("drops undeclared tag-body segments only when declared is given", () => {
+    expect(readDeployedOutcome(TAGGED_TIME).keywords.subCategory).toBe("N/A");
+    const declared = readDeployedOutcome(TAGGED_TIME, null, DECLARED);
+    expect(declared.keywords.subCategory).toBeUndefined();
+  });
+
+  it("agrees on eventAt with and without declared", () => {
+    for (const outcome of [TAGGED_TIME, TAGGED_THRESHOLD]) {
+      expect(readDeployedOutcome(outcome, null, DECLARED).eventAt?.getTime()).toBe(
+        readDeployedOutcome(outcome).eventAt?.getTime(),
+      );
+    }
+  });
+
+  it("readDeployedOutcomes cuts the tag by default", () => {
+    const [a, b] = readDeployedOutcomes([TAGGED_TIME, TAGGED_THRESHOLD]);
+    expect(a.eventAt?.getTime()).toBe(NOV_1);
+    expect(b.threshold).toBe("65000");
+    expect(b.eventAt?.getTime()).toBe(NOV_1);
   });
 });
 

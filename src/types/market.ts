@@ -26,9 +26,11 @@ export interface PredictionTrade {
 /** Current price information for both sides of a prediction market. */
 export interface PredictionPrice {
   marketId: string;
-  /** Price data for each side. Names are generic ("Side 0"/"Side 1") - use event.markets[].outcomes[].name for real names. */
+  /** Price data for each side. `name` is the side name sent on chain (for example "Yes" or "template:Yes"), or "Side 0"/"Side 1" when the side names are not known. `parsedName` is the rendered name. */
   outcomes: Array<{
     name: string;
+    /** Readable side name. Template sides are rendered ("template:Yes" reads "Yes"); others repeat `name`. */
+    parsedName?: string;
     price: string;
     midpoint: string;
   }>;

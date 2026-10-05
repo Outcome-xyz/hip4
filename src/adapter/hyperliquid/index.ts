@@ -47,10 +47,21 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
     const eventAdapter = new HIP4EventAdapter(this.client);
     this.events = eventAdapter;
     const sideNameResolver = eventAdapter.getSideNameResolver();
+    const parsedSideNameResolver = eventAdapter.getParsedSideNameResolver();
     const ensureSideNames = () => eventAdapter.ensureSideNames();
-    this._marketData = new HIP4MarketDataAdapter(this.client, sideNameResolver, ensureSideNames);
+    this._marketData = new HIP4MarketDataAdapter(
+      this.client,
+      sideNameResolver,
+      ensureSideNames,
+      parsedSideNameResolver,
+    );
     this.marketData = this._marketData;
-    this.account = new HIP4AccountAdapter(this.client, eventAdapter, sideNameResolver);
+    this.account = new HIP4AccountAdapter(
+      this.client,
+      eventAdapter,
+      sideNameResolver,
+      parsedSideNameResolver,
+    );
     this.trading = new HIP4TradingAdapter(this.client, auth, {
       builderAddress: config.builderAddress,
       builderFee: config.builderFee,
