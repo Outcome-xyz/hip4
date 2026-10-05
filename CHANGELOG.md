@@ -1,5 +1,91 @@
 # Changelog
 
+## 1.3.0
+
+### Minor Changes
+
+- [#16](https://github.com/Outcome-xyz/hip4/pull/16) [`2156984`](https://github.com/Outcome-xyz/hip4/commit/2156984ce427b6c75d1844775ae127fe0fb59525) Thanks [@kolima](https://github.com/kolima)! - `createHIP4Adapter` accepts an optional `minOrderNotional` to raise the client-side order-notional
+  floor above the protocol `MIN_NOTIONAL` ($1). `getMinShares` gains an optional second parameter for
+  the same purpose. `MIN_NOTIONAL` itself is unchanged — this is an additive, backward-compatible
+  config option, not a change to the protocol floor.
+
+- [#20](https://github.com/Outcome-xyz/hip4/pull/20) [`62daf36`](https://github.com/Outcome-xyz/hip4/commit/62daf36d57282477dc3fa2953589595ca7e410d1) Thanks [@dennisfurrer](https://github.com/dennisfurrer)! - `fetchPositions` now reports `currentPrice` and `unrealizedPnl` for outcome positions. Spot balances name
+  side coins `+<coin>` while mids use `#<coin>`, so the price lookup found nothing and returned "0".
+  
+  Limit order prices are rounded to 5 decimals, the outcome price tick, in `placeOrder` and `placeOrders`. Before,
+  prices below 0.1 could be sent with 6 or more decimals (0.012345 stayed 0.012345). `formatOutcomePrice` is
+  exported for the same rounding in your own code.
+  
+  `fetchMarkets` now applies `sortBy`. It was ignored before. `"newest"` puts the highest outcome id first,
+  `"expiry"` the soonest event time, and `"volume"` the highest 24h volume (one extra `spotMetaAndAssetCtxs`
+  request). Without `sortBy` the order is unchanged.
+  
+  Names from `fetchMarkets`, `fetchEvents`, `fetchEvent`, `fetchPrice`, `subscribePrice`, `fetchPositions` and
+  `outcomeCreated` updates stay the names sent on chain, as before (for example "template:priceTouch"). The names
+  rendered from the `outcomeTemplates` registry, for example "BTC touches 90000 by Nov 1, 00:00 UTC", are in new
+  optional fields: `parsedName`, `sides[].parsedName`, `parsedQuestionName`, `parsedTitle`, `parsedQuestion`,
+  `parsedEventTitle`, `parsedMarketQuestion`, `parsedOutcomeName` and the `parsedName` of each price outcome. The
+  fallback outcome of a template question is rendered as "Other". If the registry cannot be fetched, the `template:`
+  prefix is still removed from plain names such as "template:Yes" in the parsed fields.
+  `HIP4EventAdapter.getParsedSideNameResolver()` returns the rendered side names, while `getSideNameResolver()`
+  keeps returning the wire names. Refreshing the market or event cache now makes one extra `outcomeTemplates`
+  request (cached for 30 seconds and shared by both). `classifyOutcome` and `classifyAllOutcomes` take the
+  registry as an optional last argument. New `HIP4Client.fetchSpotAssetCtxs()`.
+  
+  When Hyperliquid rejects a whole `placeOrder` or `placeOrders` request, `error` stays "Exchange returned non-ok
+  status". Hyperliquid's own message, for example "User or API Wallet 0x... does not exist.", is in the new
+  optional `raw` field of the result.
+  
+  `parseInstanceDescription`, `readDeployedOutcome` and `readDeployedOutcomes` cut the `metadata=` routing tag
+  deployers glue onto a value, so `threshold:65000 metadata=category:economics` reads as `65000`. They take an
+  optional set of declared keyword names (`declared`) to also drop the tag body's segments.
+
+### Patch Changes
+
+- [#23](https://github.com/Outcome-xyz/hip4/pull/23) [`fd09927`](https://github.com/Outcome-xyz/hip4/commit/fd099278ee41e5da0576f7fa369c6331aea5d70e) Thanks [@dennisfurrer](https://github.com/dennisfurrer)! - Rendered names and Hyperliquid's rejection message are available in new optional fields, and the existing fields
+  keep what they returned in 1.2.0-beta.2.
+  
+  If you installed 1.3.0-beta.0 (it was published to npm under `latest`):
+  
+  - Read rendered template names from `parsedName`, `sides[].parsedName`, `parsedQuestionName`, `parsedTitle`,
+    `parsedQuestion`, `parsedEventTitle`, `parsedMarketQuestion` and `parsedOutcomeName`, and the `parsedName` of
+    price outcomes. `name`, `sides[].name`, `questionName`, `title`, `question`, `eventTitle`, `marketQuestion`
+    and `outcomeName` are the names sent on chain again, as in 1.2.0-beta.2. Use
+    `HIP4EventAdapter.getParsedSideNameResolver()` for rendered side names.
+  - When Hyperliquid rejects a whole `placeOrder` or `placeOrders` request, `error` is "Exchange returned non-ok
+    status" again. Hyperliquid's message is in the new `raw` field.
+  
+  Still fixed from 1.3.0-beta.0: limit prices are rounded to 5 decimals, `fetchPositions` prices outcome
+  positions, the `metadata=` tag is cut from deployed outcome descriptions, and `fetchMarkets` honours `sortBy`.
+
+- [#25](https://github.com/Outcome-xyz/hip4/pull/25) [`9c6c158`](https://github.com/Outcome-xyz/hip4/commit/9c6c1587ee98fd5796ffef45f31990568e1cc62f) Thanks [@kolima](https://github.com/kolima)! - `readDeployedOutcomes` now accepts the same optional `declared` keyword set as `readDeployedOutcome` and
+  `parseInstanceDescription`, and `settlementStatus` accepts it for raw outcomes. Without it the behaviour is
+  unchanged: a glued `metadata=` tag is cut from values. The 1.3.0 notes said `readDeployedOutcomes` took this set
+  before it did.
+  
+  `fetchMarkets` with `sortBy: "expiry"` now handles metadata tags the same way as the rendered market names, using
+  the template's declared keywords, so the sort order and the displayed event time agree. A fallback outcome whose
+  plain name merely starts with `template` is no longer renamed "Other"; only `template:` names are.
+
+- [#22](https://github.com/Outcome-xyz/hip4/pull/22) [`14130a4`](https://github.com/Outcome-xyz/hip4/commit/14130a4caba43c4ed838a2c6466fd31d8b3c5545) Thanks [@kolima](https://github.com/kolima)! - hip4 now ships stable versions. Releases are plain `X.Y.Z` (no `-beta` suffix) and are published to the npm
+  `latest` dist-tag, so `npm install @outcome.xyz/hip4` resolves to the newest release without a tag. The
+  `beta` dist-tag is no longer updated; it keeps pointing at `1.3.0-beta.0`.
+  
+  Releases are still staged through npm trusted publishing and go live only after a maintainer approves them with
+  2FA. Once a release is live, its git tag (`vX.Y.Z`) and GitHub Release (with these notes) are created
+  automatically.
+
+- [#12](https://github.com/Outcome-xyz/hip4/pull/12) [`ae1dcbc`](https://github.com/Outcome-xyz/hip4/commit/ae1dcbc0a8b8863dbc90a029017f997da9b34f99) Thanks [@kolima](https://github.com/kolima)! - CI gate added. `.github/workflows/ci.yml` now runs typecheck, build, and the test suite (Node 20 and 24) on every
+  pull request and on push to `main`. No change to published behavior. Node pinned to `24` via `.nvmrc`/`packageManager`;
+  the test matrix omits Node 18 because `vitest@4` requires Node `^20.0.0 || ^22.0.0 || >=24.0.0`.
+
+- [#18](https://github.com/Outcome-xyz/hip4/pull/18) [`3d668f1`](https://github.com/Outcome-xyz/hip4/commit/3d668f13fc913b642d852786211fddd65fc95c37) Thanks [@kolima](https://github.com/kolima)! - `HIP4Client.subscribe`: unsubscribing before the WebSocket has opened now removes the queued
+  subscribe message instead of leaving it in the queue. Previously the cancelled subscription was
+  still sent when the socket opened, with no unsubscribe to follow, so its frames kept arriving on the
+  shared response channel (for example a coarse `l2Book` with `nSigFigs` overwriting a full-precision
+  book subscribed right after it). Identical subscribe messages are also no longer queued twice, so a
+  socket that drops before opening and reconnects sends each subscription once.
+
 ## 1.3.0-beta.0
 
 ### Minor Changes
