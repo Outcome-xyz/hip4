@@ -169,7 +169,7 @@ const byQuestion = await hip4.events.fetchMarkets({ groupBy: "question" });
 
 ```typescript
 const hip4 = createHIP4Adapter({
-  testnet: true, // defaults to false (mainnet)
+  testnet: true, // omit for mainnet (the default)
   // Builder fee - collected on every order placed by this adapter
   builderAddress: "0xYourBuilderAddress",
   builderFee: 100, // 0.1% (tenths of a basis point, 0-1000)
