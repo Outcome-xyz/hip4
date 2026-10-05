@@ -43,7 +43,7 @@ function button(label: string, onClick: () => void, active = false): HTMLButtonE
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const price = (coin: string) => (mids[coin] ? percent.format(Number(mids[coin])) : "-");
-const cents = (value: string) => `${centsFormat.format(Number(value) * 100)}¢`;
+const cents = (value: string) => `${centsFormat.format(Number(value) * 100)}c`;
 const titleOf = (market: HIP4Market) => ("questionName" in market ? market.questionName : market.name);
 const current = () => events.find((options) => options[0]!.outcomeId === selected?.id);
 
