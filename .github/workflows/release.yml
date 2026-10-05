@@ -95,7 +95,7 @@ jobs:
                 echo '```'
                 echo ""
                 echo "After approval, the git tag (v$PKG_VERSION) and GitHub Release are created automatically by the"
-                echo "'Tag release' workflow, within about 20 minutes. To do it immediately, run that workflow from the Actions tab."
+                echo "'Tag release' workflow (it checks every 20 minutes; run it from the Actions tab to skip the wait)."
               } >> "$GITHUB_STEP_SUMMARY"
             fi
           fi

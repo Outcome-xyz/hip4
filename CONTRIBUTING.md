@@ -46,6 +46,18 @@ Releases are stable versions (`X.Y.Z`) published to the npm `latest` dist-tag. T
    happens by itself shortly after approval. It does nothing while a release is only staged, and it can be run
    from the Actions tab to skip the wait.
 
+Two limits of the automatic tagging:
+
+- GitHub runs scheduled workflows only on the default branch and disables them after 60 days without repo
+  activity. After a very late approval, push to `main` or run the Tag release workflow manually.
+- It only considers the version in `package.json` at the tip of `main`. If a release is approved after a later
+  Version Packages PR has already merged, tag it by hand:
+
+  ```bash
+  git tag -a v<ver> <sha> -m v<ver> && git push origin v<ver>
+  gh release create v<ver> --verify-tag --title v<ver> --notes-file <notes>
+  ```
+
 ## Raising issues
 
 Please open an issue against the [GitHub repository](https://github.com/Outcome-xyz/hip4/issues).
