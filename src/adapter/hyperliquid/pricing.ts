@@ -54,6 +54,22 @@ export function formatPrice(price: number): string {
   return s;
 }
 
+const OUTCOME_PRICE_DECIMALS = 5;
+
+/**
+ * Format a HIP-4 outcome price for the order wire. The exchange accepts at
+ * most 5 significant figures and at most 5 decimals. For prices below 1 that
+ * means rounding to 5 decimals; `formatPrice` alone can produce more below 0.1.
+ */
+export function formatOutcomePrice(price: number | string): string {
+  const d = toDecimal(price);
+  if (d.isZero() || !d.isPositive()) return "0";
+  const rounded = d.lt(1)
+    ? d.toFixed(OUTCOME_PRICE_DECIMALS)
+    : d.toSignificantDigits(5).toString();
+  return stripZeros(rounded);
+}
+
 export function stripZeros(s: string): string {
   if (!s.includes(".")) return s;
   return s.replace(/\.?0+$/, "");

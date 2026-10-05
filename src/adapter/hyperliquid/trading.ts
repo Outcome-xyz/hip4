@@ -15,7 +15,6 @@ import {
   mul,
   sub,
   toDecimal,
-  toNum,
 } from "../../lib/precision/primitives";
 import type {
   PredictionBatchOrderResult,
@@ -28,7 +27,7 @@ import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
-import { formatPrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
+import { formatOutcomePrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
 import {
   signL1Action,
   sortCancelAction,
@@ -180,6 +179,16 @@ function interpretStatus(
   return { status: "unknown" };
 }
 
+/**
+ * Hyperliquid's message for a rejected request. On `status: "err"` the
+ * exchange returns it as a plain string in `response`.
+ */
+function exchangeError(res: { response?: unknown }): string {
+  return typeof res.response === "string" && res.response.length > 0
+    ? res.response
+    : "Exchange returned non-ok status";
+}
+
 // ---------------------------------------------------------------------------
 // HIP4TradingAdapter
 // ---------------------------------------------------------------------------
@@ -237,8 +246,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
         `Market order: side=${isBuy ? "buy" : "sell"}, price=${price} (FrontendMarket best-execution)`,
       );
     } else {
-      const rawPrice = toNum(toDecimal(params.price ?? "0"));
-      price = formatPrice(rawPrice);
+      price = formatOutcomePrice(params.price ?? "0");
       this.client.log("debug", `Limit order: price=${price}`);
 
       const numericSize = toDecimal(amount);
@@ -341,7 +349,7 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
-        return { success: false, error: "Exchange returned non-ok status" };
+        return { success: false, error: exchangeError(res) };
       }
 
       const firstStatus = res.response.data.statuses[0];
@@ -432,11 +440,9 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       );
 
       if (res.status !== "ok" || !res.response) {
+        const error = exchangeError(res);
         for (const idx of wireToInputIndex) {
-          results[idx] = {
-            success: false,
-            error: "Exchange returned non-ok status",
-          };
+          results[idx] = { success: false, error };
         }
         return { success: false, results };
       }

@@ -143,6 +143,10 @@ describe("formatPrice (via limit orders)", () => {
     expect(result.error).toMatch(/notional/i);
   });
 
+  it("rounds 0.012345 to 5 decimals (the exchange's price tick)", async () => {
+    expect(await getOrderPrice("0.012345", "2000")).toBe("0.01235");
+  });
+
   it("formats 0.10 as '0.1' (trailing zero removed)", async () => {
     expect(await getOrderPrice("0.10")).toBe("0.1");
   });
@@ -437,5 +441,40 @@ describe("placeOrder without auth", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("Not authenticated");
+  });
+});
+
+describe("request-level rejections", () => {
+  async function placeWith(response: unknown) {
+    const client = createMockClient({
+      placeOrder: vi.fn().mockResolvedValue(response),
+    } as Partial<HIP4Client>);
+    const auth = new HIP4Auth();
+    await setupAuth(auth);
+    const adapter = new HIP4TradingAdapter(client, auth);
+    const params = {
+      marketId: "1758",
+      outcome: "#17580",
+      side: "buy" as const,
+      type: "limit" as const,
+      price: "0.5",
+      amount: "10",
+    };
+    return {
+      single: await adapter.placeOrder(params),
+      batch: await adapter.placeOrders([params]),
+    };
+  }
+
+  it("returns Hyperliquid's message", async () => {
+    const message = "User or API Wallet 0xabc does not exist.";
+    const { single, batch } = await placeWith({ status: "err", response: message });
+    expect(single).toEqual({ success: false, error: message });
+    expect(batch.results[0]).toEqual({ success: false, error: message });
+  });
+
+  it("falls back to a generic message when there is none", async () => {
+    const { single } = await placeWith({ status: "err" });
+    expect(single.error).toBe("Exchange returned non-ok status");
   });
 });

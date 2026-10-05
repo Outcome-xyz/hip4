@@ -34,6 +34,7 @@ import type {
   HLUserAbstraction,
   HLUserFees,
   HLUserRoleResponse,
+  HLWsSpotAssetCtxItem,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -200,7 +201,7 @@ export class HIP4Client {
   ) => void;
 
   constructor(config: HIP4ClientConfig = {}) {
-    this.testnet = config.testnet ?? true;
+    this.testnet = config.testnet ?? false;
     this.infoUrl =
       config.infoUrl ?? (this.testnet ? TESTNET_INFO_URL : MAINNET_INFO_URL);
     this.exchangeUrl =
@@ -273,6 +274,14 @@ export class HIP4Client {
     const ctx = data[1]?.[spotIndex];
     if (!ctx?.markPx) return null;
     return { markPx: ctx.markPx, midPx: ctx.midPx ?? "0" };
+  }
+
+  /** Asset contexts (24h volume, prices) for every spot asset, outcome side coins included. */
+  async fetchSpotAssetCtxs(): Promise<HLWsSpotAssetCtxItem[]> {
+    const data = await this.infoPost<[unknown, HLWsSpotAssetCtxItem[]]>({
+      type: "spotMetaAndAssetCtxs",
+    });
+    return data[1] ?? [];
   }
 
   /** Spot balances - HIP-4 prediction market positions live here (USDH, outcome tokens) */
@@ -369,7 +378,7 @@ export class HIP4Client {
 
   /**
    * Fetch all approved builder addresses for a user.
-   * Hyperliquid limits each address to a maximum of 3 approved builders.
+   * Hyperliquid allows each user at most 10 active builder approvals.
    */
   async fetchApprovedBuilders(user: string): Promise<string[]> {
     return this.infoPost<string[]>({ type: "approvedBuilders", user });

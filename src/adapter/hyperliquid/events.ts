@@ -24,10 +24,12 @@ import type {
 import type { PredictionEventAdapter, Unsubscribe } from "../types";
 import type { HIP4Client } from "./client";
 import { sideCoin, withQuoteTokenDefault } from "./client";
+import { readDeployedOutcome } from "../../deployer/keywords";
 import { classifyAllOutcomes } from "./market-classification";
 import type {
   HLOutcome,
   HLOutcomeMeta,
+  HLOutcomeTemplate,
   HLQuestion,
   HLWsOutcomeMetaUpdate,
   HLWsOutcomeMetaUpdates,
@@ -180,6 +182,10 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
     timestamp: number;
   } | null = null;
   private static readonly CACHE_TTL_MS = 30_000;
+  private templatesCache: {
+    templates: HLOutcomeTemplate[];
+    timestamp: number;
+  } | null = null;
 
   /** Side names from outcomeMeta. Populated once, never cleared (sideSpecs don't change). */
   private sideNames: Map<number, [string, string]> | null = null;
@@ -331,6 +337,10 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
       ? allMarkets.filter((m) => m.type === params.type)
       : allMarkets;
 
+    if (params.sortBy) {
+      filtered = await this.sortMarkets(filtered, params.sortBy);
+    }
+
     // groupBy
     if (params.groupBy === "type") {
       const grouped: MarketsByType = {};
@@ -358,6 +368,51 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
     return filtered.slice(offset, offset + limit);
   }
 
+  /** The template registry. Raw names are kept if it can't be fetched. */
+  private async loadTemplates(): Promise<HLOutcomeTemplate[]> {
+    const now = Date.now();
+    if (
+      this.templatesCache &&
+      now - this.templatesCache.timestamp < HIP4EventAdapter.CACHE_TTL_MS
+    ) {
+      return this.templatesCache.templates;
+    }
+    try {
+      const templates = await this.client.fetchOutcomeTemplates();
+      this.templatesCache = { templates, timestamp: now };
+      return templates;
+    } catch (err) {
+      this.client.log("warn", "outcomeTemplates request failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return [];
+    }
+  }
+
+  private async sortMarkets(
+    markets: HIP4Market[],
+    sortBy: NonNullable<FetchMarketsParams["sortBy"]>,
+  ): Promise<HIP4Market[]> {
+    const sorted = [...markets];
+    if (sortBy === "newest") {
+      return sorted.sort((a, b) => b.outcomeId - a.outcomeId);
+    }
+    if (sortBy === "expiry") {
+      const time = (m: HIP4Market) => {
+        const question = "rawQuestion" in m ? m.rawQuestion : null;
+        const at = readDeployedOutcome(m.raw, question).eventAt;
+        return at ? at.getTime() : Number.POSITIVE_INFINITY;
+      };
+      return sorted.sort((a, b) => time(a) - time(b));
+    }
+    // 24h volume of both side coins.
+    const ctxs = await this.client.fetchSpotAssetCtxs();
+    const byCoin = new Map(ctxs.map((c) => [c.coin, Number(c.dayNtlVlm) || 0]));
+    const volume = (m: HIP4Market) =>
+      (byCoin.get(m.sides[0].coin) ?? 0) + (byCoin.get(m.sides[1].coin) ?? 0);
+    return sorted.sort((a, b) => volume(b) - volume(a));
+  }
+
   private async loadMarkets(): Promise<HIP4Market[]> {
     const now = Date.now();
     if (
@@ -367,14 +422,15 @@ export class HIP4EventAdapter implements PredictionEventAdapter {
       return this.metaCache.markets;
     }
 
-    const [meta, mids] = await Promise.all([
+    const [meta, mids, templates] = await Promise.all([
       this.client.fetchOutcomeMeta(),
       this.client.fetchAllMids().catch(() => ({}) as Record<string, string>),
+      this.loadTemplates(),
     ]);
 
     this.populateSideNames(meta);
 
-    const markets = classifyAllOutcomes(meta.outcomes, meta.questions);
+    const markets = classifyAllOutcomes(meta.outcomes, meta.questions, templates);
 
     this.metaCache = { meta, mids, markets, timestamp: now };
     return markets;

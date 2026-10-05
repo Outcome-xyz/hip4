@@ -1,0 +1,17 @@
+{
+  "name": "hip4-web-showcase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@outcome.xyz/hip4": "link:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "8.3.2"
+  }
+}

@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeTickSize,
   roundToTick,
+  formatOutcomePrice,
   formatPrice,
   stripZeros,
   getMinShares,
@@ -207,5 +208,32 @@ describe("getMinShares", () => {
 describe("MIN_NOTIONAL", () => {
   it("is 1", () => {
     expect(MIN_NOTIONAL).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatOutcomePrice
+// ---------------------------------------------------------------------------
+
+describe("formatOutcomePrice", () => {
+  it("keeps prices that already fit the grid", () => {
+    expect(formatOutcomePrice("0.61047")).toBe("0.61047");
+    expect(formatOutcomePrice("0.648")).toBe("0.648");
+    expect(formatOutcomePrice(0.5)).toBe("0.5");
+  });
+
+  it("rounds to 5 decimals below 0.1, where 5 significant figures would need more", () => {
+    expect(formatOutcomePrice("0.012345")).toBe("0.01235");
+    expect(formatOutcomePrice("0.0012344")).toBe("0.00123");
+  });
+
+  it("rounds to 5 decimals above 0.1", () => {
+    expect(formatOutcomePrice("0.123456")).toBe("0.12346");
+  });
+
+  it("returns '0' for zero, negative, or sub-tick prices", () => {
+    expect(formatOutcomePrice("0")).toBe("0");
+    expect(formatOutcomePrice("-0.5")).toBe("0");
+    expect(formatOutcomePrice("0.000004")).toBe("0");
   });
 });

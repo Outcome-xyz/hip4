@@ -150,11 +150,15 @@ export type HIP4Market =
 export interface FetchMarketsParams {
   /** Filter to a specific market type */
   type?: MarketType;
-  /** Sort order. Default: "newest" */
+  /**
+   * Sort order. "newest" puts the highest outcome id first, "expiry" the
+   * soonest event time (markets without one last), and "volume" the highest
+   * 24h volume (one extra request). Omit to keep catalog order.
+   */
   sortBy?: "volume" | "expiry" | "newest";
   /** Group results by key */
   groupBy?: "type" | "question";
-  /** Max results (after filtering). Default: 100 */
+  /** Max results (after filtering and sorting). Default: all */
   limit?: number;
   /** Offset for pagination. Default: 0 */
   offset?: number;
