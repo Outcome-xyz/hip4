@@ -72,6 +72,20 @@ function fill(
 }
 
 /**
+ * The keyword names a template declares for an outcome, or `undefined` when
+ * the outcome is not a template instance or its template is not in
+ * `templates`. Used to tell real keywords from a metadata tag's body.
+ */
+export function declaredKeywordsOf(
+  outcomeName: string,
+  templates: readonly HLOutcomeTemplate[],
+): ReadonlySet<string> | undefined {
+  const templateId = templateIdOfOutcome(outcomeName);
+  const template = templateId ? findTemplate(templates, templateId) : null;
+  return template ? new Set(template.keywords.map(([k]) => k)) : undefined;
+}
+
+/**
  * Render the name and side names of a template market. Anything that is not
  * a template instance, or whose template is not in `templates`, keeps its
  * wire names.
@@ -89,7 +103,7 @@ export function renderTemplateDisplay(
   const hints = new Map(template?.keywords ?? []);
   const values = parseInstanceDescription(
     entity.description,
-    new Set(hints.keys()),
+    declaredKeywordsOf(entity.name, templates),
   );
 
   const side = (index: 0 | 1): string => {
@@ -126,7 +140,7 @@ export function renderOutcomeDisplay(
 ): { name: string; sideNames: [string, string] } {
   const own = renderTemplateDisplay(outcome, templates);
   const isTemplateFallback =
-    isFallback && outcome.name.startsWith("template");
+    isFallback && outcome.name.startsWith(TEMPLATE_PREFIX);
   return {
     name: isTemplateFallback ? FALLBACK_OUTCOME_NAME : own.name,
     sideNames: own.sideNames,

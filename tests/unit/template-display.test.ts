@@ -210,6 +210,13 @@ describe("renderOutcomeDisplay", () => {
       "template:race",
     );
   });
+
+  it("does not rename a plain fallback whose name merely starts with template", () => {
+    const plain = { name: "templateXYZ", description: "", sideSpecs: [] };
+    expect(renderOutcomeDisplay(plain, TEMPLATES, true).name).toBe(
+      "templateXYZ",
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
