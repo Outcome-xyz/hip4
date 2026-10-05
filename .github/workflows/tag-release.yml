@@ -1,0 +1,45 @@
+name: Tag release
+
+# Creates the git tag and GitHub Release for a version once it is live on npm.
+#
+# Releases are staged by release.yml and only go live after a maintainer approves them with 2FA. Approval
+# happens on npm, outside GitHub, so no event fires when it lands. This workflow therefore polls: it runs on
+# every push to main, every 20 minutes, and on demand. While a version is merely staged it does nothing.
+# It is idempotent, so overlapping or repeated runs are harmless.
+#
+# Kept separate from release.yml on purpose: this one needs only `contents: write`, and release.yml keeps
+# `id-token: write` (the npm trusted-publisher binding) to itself.
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag-release:
+    name: Tag and release
+    if: github.repository == 'Outcome-xyz/hip4'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create tag and GitHub Release if the version is live on npm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: .github/scripts/tag-release.sh
