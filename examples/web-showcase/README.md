@@ -22,7 +22,4 @@ The example targets testnet by default. Mainnet is opt-in with `createHIP4Adapte
 the page.
 
 In your own app, install `@outcome.xyz/hip4` from npm in place of the `link:../..` dependency, and replace
-`acme-games` in The example targets testnet by default. Mainnet is opt-in with `createHIP4Adapter({ testnet: false })` in
-`src/markets.ts`. The outcome.xyz links are for mainnet markets, so use mainnet for links that resolve.
-
-`src/markets.ts` with your brand.
+`acme-games` in `src/markets.ts` with your brand.
