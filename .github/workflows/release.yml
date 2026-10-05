@@ -55,7 +55,7 @@ jobs:
       # (does not silently no-op) if the version is already staged pending approval — so if another commit
       # lands on main while a release is still awaiting approval, this step would otherwise fail the job
       # every time; the known-benign-failure branch below catches that specific case instead of going red.
-      - name: Publish or tag npm release via OIDC trusted publisher
+      - name: Stage npm release via OIDC trusted publisher
         if: steps.changesets.outputs.has-changesets == 'false'
         run: |
           PKG_NAME=$(node -p "require('./package.json').name")
@@ -63,13 +63,12 @@ jobs:
           echo "npm $(npm -v)" # staged publishing needs npm >=11.15.0; log it so a version-floor failure is diagnosable
 
           if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
-            echo "$PKG_NAME@$PKG_VERSION is already live on npm. Tagging (idempotent, skips already-tagged versions)..."
-            pnpm changeset git-tag
-            git push --tags
+            # Tagging and the GitHub Release are handled by tag-release.yml, which is the single tagging path.
+            echo "$PKG_NAME@$PKG_VERSION is already live on npm. Nothing to publish (tag-release.yml handles the tag and GitHub Release)."
           else
             echo "Staging $PKG_NAME@$PKG_VERSION for npm publish via OIDC trusted publisher..."
             set +e
-            STAGE_OUTPUT=$(npm stage publish . --access public --tag beta --provenance 2>&1)
+            STAGE_OUTPUT=$(npm stage publish . --access public --tag latest --provenance 2>&1)
             STAGE_EXIT=$?
             set -e
             echo "$STAGE_OUTPUT"
@@ -95,11 +94,8 @@ jobs:
                 echo "npm stage approve <stage-id>"
                 echo '```'
                 echo ""
-                echo "Git tags are created the next time this workflow runs after approval (any push to main)."
-                echo "For an immediate tag, run this from a checkout of main after approving:"
-                echo '```'
-                echo "pnpm changeset git-tag && git push --tags"
-                echo '```'
+                echo "After approval, the git tag (v$PKG_VERSION) and GitHub Release are created automatically by the"
+                echo "'Tag release' workflow (it checks every 20 minutes; run it from the Actions tab to skip the wait)."
               } >> "$GITHUB_STEP_SUMMARY"
             fi
           fi

@@ -13,7 +13,7 @@ body:
     attributes:
       label: SDK version
       description: Output of `pnpm list @outcome.xyz/hip4` (or your package manager equivalent).
-      placeholder: 1.0.0-beta
+      placeholder: 1.3.0
     validations:
       required: true
   - type: dropdown
