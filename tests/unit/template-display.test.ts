@@ -59,6 +59,18 @@ const TEMPLATES: HLOutcomeTemplate[] = [
   },
 ];
 
+const ABOVE: HLOutcomeTemplate = {
+  id: "above",
+  role: { standaloneOutcome: { sideNames: ["Yes", "No"] } },
+  name: "{perp} above {threshold} at {time}",
+  description: "",
+  keywords: [
+    ["perp", "hlPerp"],
+    ["threshold", "uDecimal"],
+    ["time", "dateTime"],
+  ],
+};
+
 const PRICE_TOUCH = {
   name: "template:priceTouch",
   description: "perp:BTC|target:90000|time:20261101-0000",
@@ -143,16 +155,50 @@ describe("renderTemplateDisplay", () => {
     expect(out).toEqual({ name: "Plain", sideNames: ["Hypurr", "Bolt"] });
   });
 
-  it("ignores a trailing metadata segment and never cuts a value", () => {
+  it("cuts a metadata tag glued to a value, keeping later keywords", () => {
     const out = renderTemplateDisplay(
       {
-        ...PRICE_TOUCH,
-        name: "template:contest",
-        description: "a:metadata=ok|b:LEE|metadata=route:abc",
+        name: "template:above",
+        description:
+          "perp:BTC|threshold:65000 metadata=category:economics|time:20260807-1600",
+        sideSpecs: [],
       },
-      TEMPLATES,
+      [...TEMPLATES, ABOVE],
     );
-    expect(out.name).toBe("metadata=ok vs LEE");
+    expect(out.name).toBe("BTC above 65000 at Aug 7, 16:00 UTC");
+  });
+
+  it("cuts a metadata tag from a date value and drops its body segments", () => {
+    const out = renderTemplateDisplay(
+      {
+        name: "template:above",
+        description:
+          "perp:BTC|threshold:65000|time:20260807-1600 metadata=category:price|subCategory:N/A",
+        sideSpecs: [],
+      },
+      [...TEMPLATES, ABOVE],
+    );
+    expect(out.name).toBe("BTC above 65000 at Aug 7, 16:00 UTC");
+  });
+
+  it("cuts a metadata tag from a string value", () => {
+    const out = renderTemplateDisplay(
+      {
+        name: "template:stage",
+        description: "stage:Matchday 1 metadata=category:sports",
+        sideSpecs: [],
+      },
+      [
+        {
+          id: "stage",
+          role: { standaloneOutcome: { sideNames: ["Yes", "No"] } },
+          name: "{stage} winner",
+          description: "",
+          keywords: [["stage", "shortString"]],
+        },
+      ],
+    );
+    expect(out.name).toBe("Matchday 1 winner");
   });
 });
 

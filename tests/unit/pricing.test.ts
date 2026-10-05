@@ -149,7 +149,7 @@ describe("stripZeros", () => {
     expect(stripZeros("0.000")).toBe("0");
   });
 
-  it("handles long runs of zeros in linear time", () => {
+  it("handles long runs of zeros", () => {
     const input = "1." + "0".repeat(100_000) + "x";
     expect(stripZeros(input)).toBe(input);
     expect(stripZeros("1." + "0".repeat(100_000))).toBe("1");
