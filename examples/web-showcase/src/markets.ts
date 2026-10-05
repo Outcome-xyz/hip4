@@ -23,6 +23,10 @@ export async function loadEvents() {
     // Other deployers publish on Hyperliquid too. Outcome's markets have venue
     // "out". A question's fallback outcome has no order book.
     if (market.raw.venue !== "out" || ("isFallback" in market && market.isFallback)) continue;
+    // Recurring markets stay in the catalog after they expire, until they settle.
+    // Only the typed `expiry` is used: a sports market's event time is its kickoff,
+    // and filtering on it would hide games that are still tradable in play.
+    if ("expiry" in market && market.expiry.getTime() <= Date.now()) continue;
     const id = "questionId" in market ? `q${market.questionId}` : `o${market.outcomeId}`;
     events.set(id, [...(events.get(id) ?? []), market]);
   }
