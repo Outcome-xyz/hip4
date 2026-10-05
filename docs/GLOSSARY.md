@@ -78,7 +78,7 @@ A comprehensive glossary of every term, concept, and convention used in this SDK
 
 **createHIP4Adapter** - The factory function that instantiates a `HyperliquidHip4Adapter` with optional config (testnet, custom URLs, logger). This is the main entry point for consumers. (`src/adapter/factory.ts`: `createHIP4Adapter`)
 
-**CreateHIP4AdapterConfig** - Configuration object for the adapter factory. Fields: `testnet` (boolean, defaults to false, i.e. mainnet), `infoUrl` (custom Info endpoint), `exchangeUrl` (custom Exchange endpoint), `logger` (log function). (`src/adapter/factory.ts`: `CreateHIP4AdapterConfig`)
+**CreateHIP4AdapterConfig** - Configuration object for the adapter factory. Fields: `testnet` (boolean, defaults to true), `infoUrl` (custom Info endpoint), `exchangeUrl` (custom Exchange endpoint), `logger` (log function). (`src/adapter/factory.ts`: `CreateHIP4AdapterConfig`)
 
 **HIP4Auth** - The authentication sub-adapter. Stores a wallet address and signer reference. Transitions through three states: `"disconnected"` -> `"pending_approval"` -> `"ready"`. Exposes `getSigner()` internally for the trading adapter. Does not validate that the signer address matches the wallet address, since agent wallets sign on behalf of users. (`src/adapter/hyperliquid/auth.ts`: `HIP4Auth`)
 

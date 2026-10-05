@@ -2,7 +2,6 @@ import { HyperliquidHip4Adapter } from "./hyperliquid";
 
 /** Configuration for creating a HIP-4 prediction market adapter. */
 export interface CreateHIP4AdapterConfig {
-	/** Target Hyperliquid testnet. Default: `false` (mainnet). */
 	testnet?: boolean;
 	infoUrl?: string;
 	exchangeUrl?: string;

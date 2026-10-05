@@ -2,9 +2,6 @@
 "@outcome.xyz/hip4": minor
 ---
 
-BREAKING: `createHIP4Adapter()` and `new HIP4Client()` called without `testnet` now target mainnet and
-sign orders with real funds. Before, they targeted testnet. Pass `testnet: true` to keep the old behaviour.
-
 `placeOrder` and `placeOrders` return Hyperliquid's message when the exchange rejects the whole request,
 for example "User or API Wallet 0x... does not exist.", instead of "Exchange returned non-ok status".
 
@@ -26,3 +23,6 @@ plain names such as "template:Yes". Refreshing the market or event cache now mak
 
 `fetchPositions` now reports `currentPrice` and `unrealizedPnl` for outcome positions. Spot balances name
 side coins `+<coin>` while mids use `#<coin>`, so the price lookup found nothing and returned "0".
+
+`parseInstanceDescription` cuts the `metadata=` routing tag deployers glue onto a value and takes an optional
+set of declared keyword names to drop tag-body segments.

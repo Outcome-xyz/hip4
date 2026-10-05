@@ -72,6 +72,11 @@ describe("createHIP4Adapter", () => {
     expect(adapter.id).toBe("hyperliquid");
   });
 
+  it("targets testnet when no testnet option is given", () => {
+    const adapter = createHIP4Adapter();
+    expect(adapter.name).toContain("Testnet");
+  });
+
   it("name includes 'Testnet' when testnet is true", () => {
     const adapter = createHIP4Adapter({ testnet: true });
 

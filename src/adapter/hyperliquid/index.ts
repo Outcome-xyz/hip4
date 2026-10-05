@@ -33,7 +33,7 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
   private readonly _marketData: HIP4MarketDataAdapter;
 
   constructor(config: CreateHIP4AdapterConfig = {}) {
-    const testnet = config.testnet ?? false;
+    const testnet = config.testnet ?? true;
     this.name = testnet ? "Hyperliquid HIP-4 (Testnet)" : "Hyperliquid HIP-4";
 
     this.client = new HIP4Client({

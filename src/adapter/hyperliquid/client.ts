@@ -201,7 +201,7 @@ export class HIP4Client {
   ) => void;
 
   constructor(config: HIP4ClientConfig = {}) {
-    this.testnet = config.testnet ?? false;
+    this.testnet = config.testnet ?? true;
     this.infoUrl =
       config.infoUrl ?? (this.testnet ? TESTNET_INFO_URL : MAINNET_INFO_URL);
     this.exchangeUrl =
