@@ -30,8 +30,8 @@ pnpm build
 
 ## Releases
 
-Releases are stable versions (`X.Y.Z`) published to the npm `latest` dist-tag. They are automated with
-[Changesets](https://github.com/changesets/changesets):
+Releases are stable versions (`X.Y.Z`) published to the npm `latest` dist-tag, or pre-releases (`X.Y.Z-beta.N`)
+published to the `beta` dist-tag. They are automated with [Changesets](https://github.com/changesets/changesets):
 
 1. Every PR that should ship a release adds a changeset with `pnpm changeset`. Pick the bump (patch, minor or
    major) and write the note as it should read in the changelog.
@@ -45,6 +45,11 @@ Releases are stable versions (`X.Y.Z`) published to the npm `latest` dist-tag. T
    with that version's changelog section. It checks every 20 minutes and on every push to `main`, so this
    happens by itself shortly after approval. It does nothing while a release is only staged, and it can be run
    from the Actions tab to skip the wait.
+
+Pre-releases: `pnpm changeset pre enter beta` (it adds `.changeset/pre.json`) puts Changesets in pre-release mode,
+and the Version Packages PR then bumps to `X.Y.Z-beta.N`. The Release workflow stages it under the `beta`
+dist-tag, so `latest` keeps the newest stable version, and the GitHub Release is marked as a pre-release. To ship
+the stable version, merge a PR that runs `pnpm changeset pre exit`, then release as usual.
 
 Two limits of the automatic tagging:
 

@@ -66,9 +66,15 @@ jobs:
             # Tagging and the GitHub Release are handled by tag-release.yml, which is the single tagging path.
             echo "$PKG_NAME@$PKG_VERSION is already live on npm. Nothing to publish (tag-release.yml handles the tag and GitHub Release)."
           else
-            echo "Staging $PKG_NAME@$PKG_VERSION for npm publish via OIDC trusted publisher..."
+            # A pre-release (1.4.0-beta.0) goes to the dist-tag Changesets pre mode names (.changeset/pre.json),
+            # never to `latest`, so `npm install` keeps resolving the newest stable release.
+            case "$PKG_VERSION" in
+              *-*) DIST_TAG=$(node -p "require('./.changeset/pre.json').tag") ;;
+              *) DIST_TAG=latest ;;
+            esac
+            echo "Staging $PKG_NAME@$PKG_VERSION (dist-tag $DIST_TAG) for npm publish via OIDC trusted publisher..."
             set +e
-            STAGE_OUTPUT=$(npm stage publish . --access public --tag latest --provenance 2>&1)
+            STAGE_OUTPUT=$(npm stage publish . --access public --tag "$DIST_TAG" --provenance 2>&1)
             STAGE_EXIT=$?
             set -e
             echo "$STAGE_OUTPUT"
