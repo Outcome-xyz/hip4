@@ -28,7 +28,12 @@ import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
-import { formatOutcomePrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
+import {
+  formatOutcomePrice,
+  getMinShares,
+  MIN_NOTIONAL,
+  stripZeros,
+} from "./pricing";
 import {
   signL1Action,
   sortCancelAction,
@@ -189,7 +194,11 @@ function interpretStatus(
  */
 function exchangeError(res: { response?: unknown }): PredictionOrderResult {
   return typeof res.response === "string" && res.response.length > 0
-    ? { success: false, error: "Exchange returned non-ok status", raw: res.response }
+    ? {
+        success: false,
+        error: "Exchange returned non-ok status",
+        raw: res.response,
+      }
     : { success: false, error: "Exchange returned non-ok status" };
 }
 
@@ -198,6 +207,10 @@ function exchangeError(res: { response?: unknown }): PredictionOrderResult {
 // ---------------------------------------------------------------------------
 
 const SUB_BUILDERS_REQUIRE_BUILDER = "subBuilders requires builderAddress";
+const BATCH_NOT_SUBMITTED =
+  "Batch not submitted because another order has invalid builder params";
+const BATCH_BUILDER_MISMATCH =
+  "A single order action cannot carry more than one builder";
 
 function toBuilderWire(
   address: string,
@@ -209,6 +222,19 @@ function toBuilderWire(
     builder.s = subBuilders;
   }
   return builder;
+}
+
+function sameBuilder(
+  a: HLBuilderWire | undefined,
+  b: HLBuilderWire | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.b !== b.b || a.f !== b.f) return false;
+  const left = a.s ?? [];
+  const right = b.s ?? [];
+  if (left.length !== right.length) return false;
+  return left.every((sub, i) => sub.b === right[i].b && sub.s === right[i].s);
 }
 
 export interface TradingAdapterConfig {
@@ -243,7 +269,10 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
     }
     this._minOrderNotional = config?.minOrderNotional ?? MIN_NOTIONAL;
-    if (!Number.isFinite(this._minOrderNotional) || this._minOrderNotional < MIN_NOTIONAL) {
+    if (
+      !Number.isFinite(this._minOrderNotional) ||
+      this._minOrderNotional < MIN_NOTIONAL
+    ) {
       throw new Error(
         `minOrderNotional (${this._minOrderNotional}) must be a finite number >= the protocol MIN_NOTIONAL (${MIN_NOTIONAL})`,
       );
@@ -339,7 +368,11 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       if (subBuilders) throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
       return undefined;
     }
-    return toBuilderWire(address, params.builderFee ?? this.builderFee, subBuilders);
+    return toBuilderWire(
+      address,
+      params.builderFee ?? this.builderFee,
+      subBuilders,
+    );
   }
 
   async placeOrder(
@@ -435,22 +468,53 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       };
     }
 
-    // Build wires, tracking which input indices have pre-validation errors
+    // One signed action carries one builder. Wire failures stay on that
+    // entry. A builder error or two different builders submits nothing.
     const results: PredictionOrderResult[] = new Array(params.length);
     const validWires: HLOrderWire[] = [];
     const wireToInputIndex: number[] = [];
+    const resolvedBuilders: (HLBuilderWire | undefined)[] = [];
+    let builderError = false;
 
     for (let i = 0; i < params.length; i++) {
       const wireResult = this.buildOrderWire(params[i]);
       if ("error" in wireResult) {
         results[i] = { success: false, error: wireResult.error };
-      } else {
-        wireToInputIndex.push(i);
-        validWires.push(wireResult.wire);
+        continue;
       }
+
+      let builder: HLBuilderWire | undefined;
+      try {
+        builder = this.resolveOrderBuilder(params[i]);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Invalid builder params";
+        results[i] = { success: false, error: message };
+        builderError = true;
+        continue;
+      }
+
+      wireToInputIndex.push(i);
+      validWires.push(wireResult.wire);
+      resolvedBuilders.push(builder);
     }
 
-    if (validWires.length === 0) {
+    if (builderError || validWires.length === 0) {
+      if (builderError) {
+        for (const idx of wireToInputIndex) {
+          results[idx] = { success: false, error: BATCH_NOT_SUBMITTED };
+        }
+      }
+      return { success: false, results };
+    }
+
+    const builder = resolvedBuilders[0];
+    if (
+      resolvedBuilders.some((candidate) => !sameBuilder(candidate, builder))
+    ) {
+      for (const idx of wireToInputIndex) {
+        results[idx] = { success: false, error: BATCH_BUILDER_MISMATCH };
+      }
       return { success: false, results };
     }
 
@@ -460,12 +524,8 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       grouping: "na",
     };
 
-    if (this.builderAddress) {
-      action.builder = toBuilderWire(
-        this.builderAddress,
-        this.builderFee,
-        this.subBuilders,
-      );
+    if (builder) {
+      action.builder = builder;
     }
 
     const sortedAction = sortOrderAction(action);

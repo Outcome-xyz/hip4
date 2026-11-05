@@ -183,7 +183,8 @@ const hip4 = createHIP4Adapter({
 });
 ```
 
-Per-order builder address/fee/sub-builders can also be passed on `placeOrder` to override the adapter-level config.
+Per-order builder address, fee, and sub-builders can be passed on `placeOrder` and `placeOrders` to override the adapter-level config.
+`placeOrders` signs one builder for the whole batch. An invalid builder, or orders that resolve to different builders, submits nothing.
 Adapter-level `subBuilders` are not inherited by an order that overrides `builderAddress`.
 
 `minOrderNotional` can only raise the effective floor above the protocol minimum, never lower it - the

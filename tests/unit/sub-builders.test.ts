@@ -115,20 +115,24 @@ describe("toWireSubBuilders", () => {
     expect(() => toWireSubBuilders(many)).toThrow(/At most 5/);
   });
 
-  it.each(["0xABC", "BD31F5972F189E37E6003B5EE175296B3D79EB6E", "0x" + "z".repeat(40)])(
-    "throws on invalid address %s",
-    (address) => {
-      expect(() => toWireSubBuilders([{ address, share: 1000 }])).toThrow(
-        /invalid address/,
+  it.each([
+    "0xABC",
+    "BD31F5972F189E37E6003B5EE175296B3D79EB6E",
+    "0x" + "z".repeat(40),
+  ])("throws on invalid address %s", (address) => {
+    expect(() => toWireSubBuilders([{ address, share: 1000 }])).toThrow(
+      /invalid address/,
+    );
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])(
+    "throws on non-positive or non-integer share %s",
+    (share) => {
+      expect(() => toWireSubBuilders([{ address: SUB_A, share }])).toThrow(
+        /positive integer/,
       );
     },
   );
-
-  it.each([0, -1, 1.5, Number.NaN])("throws on non-positive or non-integer share %s", (share) => {
-    expect(() => toWireSubBuilders([{ address: SUB_A, share }])).toThrow(
-      /positive integer/,
-    );
-  });
 
   it("throws when sharePercent is finer than 0.001%", () => {
     expect(() =>
@@ -154,7 +158,14 @@ describe("sortOrderAction with sub-builders", () => {
   const baseAction = {
     type: "order" as const,
     orders: [
-      { a: 1, b: true, p: "0.5", s: "10", r: false, t: { limit: { tif: "Gtc" as const } } },
+      {
+        a: 1,
+        b: true,
+        p: "0.5",
+        s: "10",
+        r: false,
+        t: { limit: { tif: "Gtc" as const } },
+      },
     ],
     grouping: "na" as const,
   };
@@ -163,7 +174,9 @@ describe("sortOrderAction with sub-builders", () => {
     const sorted = sortOrderAction({
       ...baseAction,
       builder: { s: [{ s: 25000, b: SUB_A }], f: 0, b: TOP },
-    }) as unknown as { builder: Record<string, unknown> & { s: Record<string, unknown>[] } };
+    }) as unknown as {
+      builder: Record<string, unknown> & { s: Record<string, unknown>[] };
+    };
 
     expect(Object.keys(sorted.builder)).toEqual(["b", "f", "s"]);
     expect(Object.keys(sorted.builder.s[0])).toEqual(["b", "s"]);
@@ -202,7 +215,10 @@ describe("HIP4TradingAdapter sub-builders", () => {
   });
 
   it("has no sub-builders by default", async () => {
-    const adapter = new HIP4TradingAdapter(client, auth, { builderAddress: TOP, builderFee: 0 });
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      builderFee: 0,
+    });
     await adapter.placeOrder(ORDER);
     expect(lastAction().builder).toEqual({ b: TOP.toLowerCase(), f: 0 });
   });
@@ -219,7 +235,10 @@ describe("HIP4TradingAdapter sub-builders", () => {
 
   it("throws at construction when sub-builders are set without builderAddress", () => {
     expect(
-      () => new HIP4TradingAdapter(client, auth, { subBuilders: [{ address: SUB_A, share: 1 }] }),
+      () =>
+        new HIP4TradingAdapter(client, auth, {
+          subBuilders: [{ address: SUB_A, share: 1 }],
+        }),
     ).toThrow(/requires builderAddress/);
   });
 
@@ -242,8 +261,13 @@ describe("HIP4TradingAdapter sub-builders", () => {
       builderAddress: TOP,
       subBuilders: [{ address: SUB_A, share: 25000 }],
     });
-    await adapter.placeOrder({ ...ORDER, subBuilders: [{ address: SUB_B, share: 50000 }] });
-    expect(lastAction().builder.s).toEqual([{ b: SUB_B.toLowerCase(), s: 50000 }]);
+    await adapter.placeOrder({
+      ...ORDER,
+      subBuilders: [{ address: SUB_B, share: 50000 }],
+    });
+    expect(lastAction().builder.s).toEqual([
+      { b: SUB_B.toLowerCase(), s: 50000 },
+    ]);
   });
 
   it("does not inherit config sub-builders when the order overrides builderAddress", async () => {
@@ -251,12 +275,18 @@ describe("HIP4TradingAdapter sub-builders", () => {
       builderAddress: TOP,
       subBuilders: [{ address: SUB_A, share: 25000 }],
     });
-    await adapter.placeOrder({ ...ORDER, builderAddress: SUB_B, builderFee: 0 });
+    await adapter.placeOrder({
+      ...ORDER,
+      builderAddress: SUB_B,
+      builderFee: 0,
+    });
     expect(lastAction().builder).toEqual({ b: SUB_B.toLowerCase(), f: 0 });
   });
 
   it("returns an error instead of throwing on invalid per-order sub-builders", async () => {
-    const adapter = new HIP4TradingAdapter(client, auth, { builderAddress: TOP });
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+    });
     const res = await adapter.placeOrder({
       ...ORDER,
       subBuilders: [{ address: SUB_A }],
@@ -287,6 +317,89 @@ describe("HIP4TradingAdapter sub-builders", () => {
       b: TOP.toLowerCase(),
       f: 0,
       s: [{ b: SUB_A.toLowerCase(), s: 25000 }],
+    });
+  });
+
+  it("uses the same per-order sub-builders on placeOrders", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    const orders = [ORDER, ORDER].map((order) => ({
+      ...order,
+      subBuilders: [{ address: SUB_B, share: 50000 }],
+    }));
+    await adapter.placeOrders(orders);
+    expect(lastAction().builder).toEqual({
+      b: TOP.toLowerCase(),
+      f: 0,
+      s: [{ b: SUB_B.toLowerCase(), s: 50000 }],
+    });
+  });
+
+  it("clears config sub-builders when every placeOrders entry passes []", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    await adapter.placeOrders([
+      { ...ORDER, subBuilders: [] },
+      { ...ORDER, subBuilders: [] },
+    ]);
+    expect(lastAction().builder).toEqual({ b: TOP.toLowerCase(), f: 0 });
+  });
+
+  it("does not submit placeOrders when one entry has invalid sub-builders", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+    });
+    const res = await adapter.placeOrders([
+      ORDER,
+      { ...ORDER, subBuilders: [{ address: SUB_A }] },
+    ]);
+    expect(res.success).toBe(false);
+    expect(res.results[0].error).toMatch(
+      /another order has invalid builder params/,
+    );
+    expect(res.results[1].error).toMatch(
+      /exactly one of share or sharePercent/,
+    );
+    expect(client.placeOrder).not.toHaveBeenCalled();
+  });
+
+  it("does not submit placeOrders when entries resolve to different builders", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    const res = await adapter.placeOrders([
+      ORDER,
+      { ...ORDER, subBuilders: [] },
+    ]);
+    expect(res.success).toBe(false);
+    expect(
+      res.results.every((result) =>
+        /more than one builder/.test(result.error ?? ""),
+      ),
+    ).toBe(true);
+    expect(client.placeOrder).not.toHaveBeenCalled();
+  });
+
+  it("still submits the other placeOrders entries when one fails the wire check", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+    });
+    const res = await adapter.placeOrders([
+      { ...ORDER, price: "0.0001", amount: "1" },
+      { ...ORDER, subBuilders: [{ address: SUB_B, share: 50000 }] },
+    ]);
+    expect(res.results[0].success).toBe(false);
+    expect(res.results[0].error).toMatch(/notional/i);
+    expect(lastAction().orders).toHaveLength(1);
+    expect(lastAction().builder).toEqual({
+      b: TOP.toLowerCase(),
+      f: 0,
+      s: [{ b: SUB_B.toLowerCase(), s: 50000 }],
     });
   });
 });
