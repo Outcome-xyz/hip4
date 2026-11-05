@@ -270,7 +270,7 @@ describe("HIP4TradingAdapter sub-builders", () => {
     ]);
   });
 
-  it("does not inherit config sub-builders when the order overrides builderAddress", async () => {
+  it("does not inherit config sub-builders for a different builder address", async () => {
     const adapter = new HIP4TradingAdapter(client, auth, {
       builderAddress: TOP,
       subBuilders: [{ address: SUB_A, share: 25000 }],
@@ -281,6 +281,52 @@ describe("HIP4TradingAdapter sub-builders", () => {
       builderFee: 0,
     });
     expect(lastAction().builder).toEqual({ b: SUB_B.toLowerCase(), f: 0 });
+  });
+
+  it("keeps config sub-builders when the order repeats the adapter builder address", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    await adapter.placeOrder({
+      ...ORDER,
+      builderAddress: TOP.toLowerCase(),
+    });
+    expect(lastAction().builder).toEqual({
+      b: TOP.toLowerCase(),
+      f: 0,
+      s: [{ b: SUB_A.toLowerCase(), s: 25000 }],
+    });
+  });
+
+  it("sends an explicit sub-builders list even when the builder address matches", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    await adapter.placeOrder({
+      ...ORDER,
+      builderAddress: TOP.toLowerCase(),
+      subBuilders: [{ address: SUB_B, share: 50000 }],
+    });
+    expect(lastAction().builder).toEqual({
+      b: TOP.toLowerCase(),
+      f: 0,
+      s: [{ b: SUB_B.toLowerCase(), s: 50000 }],
+    });
+  });
+
+  it("clears config sub-builders when the matching address passes []", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    await adapter.placeOrder({
+      ...ORDER,
+      builderAddress: TOP.toLowerCase(),
+      subBuilders: [],
+    });
+    expect(lastAction().builder).toEqual({ b: TOP.toLowerCase(), f: 0 });
   });
 
   it("returns an error instead of throwing on invalid per-order sub-builders", async () => {
@@ -364,6 +410,40 @@ describe("HIP4TradingAdapter sub-builders", () => {
     expect(res.results[1].error).toMatch(
       /exactly one of share or sharePercent/,
     );
+    expect(client.placeOrder).not.toHaveBeenCalled();
+  });
+
+  it("keeps config sub-builders when a placeOrders entry repeats the adapter address", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    await adapter.placeOrders([
+      ORDER,
+      { ...ORDER, builderAddress: TOP.toLowerCase() },
+    ]);
+    expect(lastAction().builder).toEqual({
+      b: TOP.toLowerCase(),
+      f: 0,
+      s: [{ b: SUB_A.toLowerCase(), s: 25000 }],
+    });
+  });
+
+  it("does not submit placeOrders when one entry uses a different builder address", async () => {
+    const adapter = new HIP4TradingAdapter(client, auth, {
+      builderAddress: TOP,
+      subBuilders: [{ address: SUB_A, share: 25000 }],
+    });
+    const res = await adapter.placeOrders([
+      ORDER,
+      { ...ORDER, builderAddress: SUB_B },
+    ]);
+    expect(res.success).toBe(false);
+    expect(
+      res.results.every((result) =>
+        /more than one builder/.test(result.error ?? ""),
+      ),
+    ).toBe(true);
     expect(client.placeOrder).not.toHaveBeenCalled();
   });
 

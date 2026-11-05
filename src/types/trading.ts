@@ -40,9 +40,11 @@ export interface PredictionOrderParams {
    */
   builderFee?: number;
   /**
-   * Sub-builders sharing this order's builder fee. Overrides the adapter-level
-   * subBuilders. Requires a builder; when builderAddress is overridden here,
-   * adapter-level subBuilders are not inherited.
+   * Sub-builders for this order's builder (`builder.s` on the order action).
+   * Replaces the adapter list when set, including `[]`. When omitted, the
+   * adapter list is used if this order's builder address matches the
+   * adapter's, compared in lowercase. A different address sends no `s`.
+   * Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
    */
   subBuilders?: SubBuilder[];
   /**

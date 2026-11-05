@@ -349,18 +349,25 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
   }
 
   /**
-   * Per-order builder params override adapter-level config. Adapter-level
-   * subBuilders are only inherited when the order keeps the adapter's builder.
+   * Fill Hyperliquid's single action-level `builder`. Omitted fields use
+   * the adapter config. An explicit `subBuilders` array, including `[]`,
+   * is sent as given. The same builder address, ignoring case, still uses
+   * the adapter `s`. A different address with no `subBuilders` omits `s`.
    * Throws on invalid sub-builders.
+   * Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
    */
   private resolveOrderBuilder(
     params: PredictionOrderParams,
   ): HLBuilderWire | undefined {
     const address = params.builderAddress ?? this.builderAddress;
+    const keepsAdapterBuilder =
+      address !== undefined &&
+      this.builderAddress !== undefined &&
+      address.toLowerCase() === this.builderAddress.toLowerCase();
     let subBuilders: HLSubBuilderWire[] | undefined;
     if (params.subBuilders !== undefined) {
       subBuilders = toWireSubBuilders(params.subBuilders);
-    } else if (params.builderAddress === undefined) {
+    } else if (keepsAdapterBuilder) {
       subBuilders = this.subBuilders;
     }
 
@@ -468,8 +475,10 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       };
     }
 
-    // One signed action carries one builder. Wire failures stay on that
-    // entry. A builder error or two different builders submits nothing.
+    // Hyperliquid puts one `builder` on the order action, not on each order.
+    // A wire failure stays on that entry. An invalid builder, or orders that
+    // do not resolve to the same builder, is not signed.
+    // Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
     const results: PredictionOrderResult[] = new Array(params.length);
     const validWires: HLOrderWire[] = [];
     const wireToInputIndex: number[] = [];

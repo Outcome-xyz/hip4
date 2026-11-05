@@ -257,10 +257,16 @@ export interface HLSubBuilderWire {
   s: number;
 }
 
+/**
+ * Optional `builder` on an order action. One object for the whole action,
+ * not one per order: `{ b, f, s? }`.
+ * Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
+ */
 export interface HLBuilderWire {
   b: string;
   /** Fee in tenths of a basis point. */
   f: number;
+  /** Omitted when the top builder keeps the whole fee. */
   s?: HLSubBuilderWire[];
 }
 
@@ -762,9 +768,7 @@ export interface HLDeployerEntry {
 
 /** Role a template plays in the registry. @experimental */
 export type HLTemplateRoleKind =
-  | "standaloneOutcome"
-  | "question"
-  | "questionOutcome";
+  "standaloneOutcome" | "question" | "questionOutcome";
 
 /**
  * A template's role, which arrives in two shapes: the bare string

@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
-// Sub-builders: split the top builder's fee with up to 5 other addresses.
-// Wire format (order action `builder.s`): [{ b: address, s: share }], where
-// share is in units of 0.001% of the builder fee (50000 = half). The top
-// builder keeps whatever remains.
+// Sub-builders: Hyperliquid's optional `builder.s` on the order action.
+// Up to 5 entries of { b: address, s: share }. Share is in units of 0.001%
+// of the builder fee (50000 = half). Shares must be positive and sum to at
+// most 100%. The top builder keeps the remainder.
+// Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
 // ---------------------------------------------------------------------------
 
 import type { SubBuilder } from "../../types/trading";
