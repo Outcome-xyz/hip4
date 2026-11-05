@@ -108,6 +108,7 @@ export {
   HIP4WalletAdapter,
   HLApiError,
   isUsdClassTransferRequired,
+  MAX_SUB_BUILDERS,
   MIN_NOTIONAL,
   normalizeSignature,
   outcomeCoin,
@@ -118,6 +119,7 @@ export {
   periodMinutes,
   roundToTick,
   sideAssetId,
+  SUB_BUILDER_SHARE_TOTAL,
   sideCoin,
   splitHexSignature,
   stripZeros,
@@ -401,6 +403,7 @@ export type {
   PredictionOrderParams,
   PredictionOrderResult,
   PredictionBatchOrderResult,
+  SubBuilder,
 } from "./types/trading";
 
 /* Orderbook utilities */

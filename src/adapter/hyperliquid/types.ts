@@ -251,6 +251,19 @@ export interface HLOrderAction {
   grouping: "na";
 }
 
+export interface HLSubBuilderWire {
+  b: string;
+  /** Share of the builder fee in units of 0.001%. */
+  s: number;
+}
+
+export interface HLBuilderWire {
+  b: string;
+  /** Fee in tenths of a basis point. */
+  f: number;
+  s?: HLSubBuilderWire[];
+}
+
 export interface HLOrderWire {
   a: number; // asset index
   b: boolean; // true = buy

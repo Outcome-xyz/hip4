@@ -1,3 +1,16 @@
+/**
+ * A sub-builder receiving part of the top builder's fee.
+ * Provide exactly one of share or sharePercent.
+ */
+export interface SubBuilder {
+  /** Existing Hyperliquid user address. Lowercased on the wire. */
+  address: string;
+  /** Raw share in units of 0.001% of the builder fee (50000 = 50%). */
+  share?: number;
+  /** Share as a percent of the builder fee (25 = 25%). Max precision 0.001. */
+  sharePercent?: number;
+}
+
 /** Parameters for placing a prediction market order. */
 export interface PredictionOrderParams {
   marketId: string;
@@ -26,6 +39,12 @@ export interface PredictionOrderParams {
    * 0 = no fee. 100 = 0.1%. 1000 = 1.0% (maximum).
    */
   builderFee?: number;
+  /**
+   * Sub-builders sharing this order's builder fee. Overrides the adapter-level
+   * subBuilders. Requires a builder; when builderAddress is overridden here,
+   * adapter-level subBuilders are not inherited.
+   */
+  subBuilders?: SubBuilder[];
   /**
    * When true, skips the SDK's local minimum-notional and minimum-shares
    * pre-checks. Use for position-closing flows (close, close-all) where

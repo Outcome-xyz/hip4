@@ -1,3 +1,4 @@
+import type { SubBuilder } from "../types/trading";
 import { HyperliquidHip4Adapter } from "./hyperliquid";
 
 /** Configuration for creating a HIP-4 prediction market adapter. */
@@ -15,6 +16,11 @@ export interface CreateHIP4AdapterConfig {
 	 * 0 = no fee. 100 = 0.1%. 1000 = 1.0% (maximum).
 	 */
 	builderFee?: number;
+	/**
+	 * Sub-builders sharing the builder fee (max 5). Requires builderAddress.
+	 * None by default.
+	 */
+	subBuilders?: SubBuilder[];
 	/**
 	 * Minimum order notional in USD, checked client-side before submission.
 	 * Must be >= the SDK's own MIN_NOTIONAL; use this to apply a stricter,

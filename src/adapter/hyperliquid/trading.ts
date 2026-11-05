@@ -22,6 +22,7 @@ import type {
   PredictionModifyParams,
   PredictionOrderParams,
   PredictionOrderResult,
+  SubBuilder,
 } from "../../types/trading";
 import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
@@ -36,7 +37,9 @@ import {
   sortScheduleCancelAction,
   sortUserOutcomeAction,
 } from "./signing";
+import { toWireSubBuilders } from "./sub-builders";
 import {
+  type HLBuilderWire,
   type HLCancelAction,
   type HLCancelResponse,
   type HLModifyAction,
@@ -44,6 +47,7 @@ import {
   type HLOrderStatus,
   type HLOrderWire,
   type HLScheduleCancelAction,
+  type HLSubBuilderWire,
   type HLUserOutcomeAction,
 } from "./types";
 
@@ -193,9 +197,25 @@ function exchangeError(res: { response?: unknown }): PredictionOrderResult {
 // HIP4TradingAdapter
 // ---------------------------------------------------------------------------
 
+const SUB_BUILDERS_REQUIRE_BUILDER = "subBuilders requires builderAddress";
+
+function toBuilderWire(
+  address: string,
+  fee: number | undefined,
+  subBuilders: HLSubBuilderWire[] | undefined,
+): HLBuilderWire {
+  const builder: HLBuilderWire = { b: address.toLowerCase(), f: fee ?? 0 };
+  if (subBuilders) {
+    builder.s = subBuilders;
+  }
+  return builder;
+}
+
 export interface TradingAdapterConfig {
   builderAddress?: string;
   builderFee?: number;
+  /** Sub-builders sharing the builder fee. Requires builderAddress. None by default. */
+  subBuilders?: SubBuilder[];
   /**
    * Client-side order-notional floor in USD, checked before submission.
    * Must be >= MIN_NOTIONAL (the real Hyperliquid protocol minimum); use
@@ -208,6 +228,7 @@ export interface TradingAdapterConfig {
 export class HIP4TradingAdapter implements PredictionTradingAdapter {
   private readonly builderAddress?: string;
   private readonly builderFee?: number;
+  private readonly subBuilders?: HLSubBuilderWire[];
   private readonly _minOrderNotional: number;
 
   constructor(
@@ -217,6 +238,10 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
   ) {
     this.builderAddress = config?.builderAddress;
     this.builderFee = config?.builderFee;
+    this.subBuilders = toWireSubBuilders(config?.subBuilders);
+    if (this.subBuilders && !this.builderAddress) {
+      throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
+    }
     this._minOrderNotional = config?.minOrderNotional ?? MIN_NOTIONAL;
     if (!Number.isFinite(this._minOrderNotional) || this._minOrderNotional < MIN_NOTIONAL) {
       throw new Error(
@@ -294,6 +319,29 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
     };
   }
 
+  /**
+   * Per-order builder params override adapter-level config. Adapter-level
+   * subBuilders are only inherited when the order keeps the adapter's builder.
+   * Throws on invalid sub-builders.
+   */
+  private resolveOrderBuilder(
+    params: PredictionOrderParams,
+  ): HLBuilderWire | undefined {
+    const address = params.builderAddress ?? this.builderAddress;
+    let subBuilders: HLSubBuilderWire[] | undefined;
+    if (params.subBuilders !== undefined) {
+      subBuilders = toWireSubBuilders(params.subBuilders);
+    } else if (params.builderAddress === undefined) {
+      subBuilders = this.subBuilders;
+    }
+
+    if (!address) {
+      if (subBuilders) throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
+      return undefined;
+    }
+    return toBuilderWire(address, params.builderFee ?? this.builderFee, subBuilders);
+  }
+
   async placeOrder(
     params: PredictionOrderParams,
   ): Promise<PredictionOrderResult> {
@@ -310,22 +358,22 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       return { success: false, error: wireResult.error };
     }
 
-    const action: HLOrderAction & { builder?: { b: string; f: number } } = {
+    let builder: HLBuilderWire | undefined;
+    try {
+      builder = this.resolveOrderBuilder(params);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Invalid builder params";
+      return { success: false, error: message };
+    }
+
+    const action: HLOrderAction & { builder?: HLBuilderWire } = {
       type: "order",
       orders: [wireResult.wire],
       grouping: "na",
     };
-
-    // Use per-order builder params if provided, otherwise fall back to adapter-level config
-    const effectiveBuilderAddress =
-      params.builderAddress ?? this.builderAddress;
-    const effectiveBuilderFee = params.builderFee ?? this.builderFee;
-
-    if (effectiveBuilderAddress) {
-      action.builder = {
-        b: effectiveBuilderAddress.toLowerCase(),
-        f: effectiveBuilderFee ?? 0,
-      };
+    if (builder) {
+      action.builder = builder;
     }
 
     const sortedAction = sortOrderAction(action);
@@ -406,17 +454,18 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       return { success: false, results };
     }
 
-    const action: HLOrderAction & { builder?: { b: string; f: number } } = {
+    const action: HLOrderAction & { builder?: HLBuilderWire } = {
       type: "order",
       orders: validWires,
       grouping: "na",
     };
 
     if (this.builderAddress) {
-      action.builder = {
-        b: this.builderAddress.toLowerCase(),
-        f: this.builderFee ?? 0,
-      };
+      action.builder = toBuilderWire(
+        this.builderAddress,
+        this.builderFee,
+        this.subBuilders,
+      );
     }
 
     const sortedAction = sortOrderAction(action);
