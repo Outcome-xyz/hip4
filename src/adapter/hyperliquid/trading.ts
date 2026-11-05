@@ -22,12 +22,18 @@ import type {
   PredictionModifyParams,
   PredictionOrderParams,
   PredictionOrderResult,
+  SubBuilder,
 } from "../../types/trading";
 import type { PredictionTradingAdapter, WalletActionResult } from "../types";
 import type { HIP4Auth } from "./auth";
 import type { HIP4Client } from "./client";
 import { sideAssetId } from "./client";
-import { formatOutcomePrice, getMinShares, MIN_NOTIONAL, stripZeros } from "./pricing";
+import {
+  formatOutcomePrice,
+  getMinShares,
+  MIN_NOTIONAL,
+  stripZeros,
+} from "./pricing";
 import {
   signL1Action,
   sortCancelAction,
@@ -36,7 +42,9 @@ import {
   sortScheduleCancelAction,
   sortUserOutcomeAction,
 } from "./signing";
+import { toWireSubBuilders } from "./sub-builders";
 import {
+  type HLBuilderWire,
   type HLCancelAction,
   type HLCancelResponse,
   type HLModifyAction,
@@ -44,6 +52,7 @@ import {
   type HLOrderStatus,
   type HLOrderWire,
   type HLScheduleCancelAction,
+  type HLSubBuilderWire,
   type HLUserOutcomeAction,
 } from "./types";
 
@@ -185,7 +194,11 @@ function interpretStatus(
  */
 function exchangeError(res: { response?: unknown }): PredictionOrderResult {
   return typeof res.response === "string" && res.response.length > 0
-    ? { success: false, error: "Exchange returned non-ok status", raw: res.response }
+    ? {
+        success: false,
+        error: "Exchange returned non-ok status",
+        raw: res.response,
+      }
     : { success: false, error: "Exchange returned non-ok status" };
 }
 
@@ -193,9 +206,42 @@ function exchangeError(res: { response?: unknown }): PredictionOrderResult {
 // HIP4TradingAdapter
 // ---------------------------------------------------------------------------
 
+const SUB_BUILDERS_REQUIRE_BUILDER = "subBuilders requires builderAddress";
+const BATCH_NOT_SUBMITTED =
+  "Batch not submitted because another order has invalid builder params";
+const BATCH_BUILDER_MISMATCH =
+  "A single order action cannot carry more than one builder";
+
+function toBuilderWire(
+  address: string,
+  fee: number | undefined,
+  subBuilders: HLSubBuilderWire[] | undefined,
+): HLBuilderWire {
+  const builder: HLBuilderWire = { b: address.toLowerCase(), f: fee ?? 0 };
+  if (subBuilders) {
+    builder.s = subBuilders;
+  }
+  return builder;
+}
+
+function sameBuilder(
+  a: HLBuilderWire | undefined,
+  b: HLBuilderWire | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.b !== b.b || a.f !== b.f) return false;
+  const left = a.s ?? [];
+  const right = b.s ?? [];
+  if (left.length !== right.length) return false;
+  return left.every((sub, i) => sub.b === right[i].b && sub.s === right[i].s);
+}
+
 export interface TradingAdapterConfig {
   builderAddress?: string;
   builderFee?: number;
+  /** Sub-builders sharing the builder fee. Requires builderAddress. None by default. */
+  subBuilders?: SubBuilder[];
   /**
    * Client-side order-notional floor in USD, checked before submission.
    * Must be >= MIN_NOTIONAL (the real Hyperliquid protocol minimum); use
@@ -208,6 +254,7 @@ export interface TradingAdapterConfig {
 export class HIP4TradingAdapter implements PredictionTradingAdapter {
   private readonly builderAddress?: string;
   private readonly builderFee?: number;
+  private readonly subBuilders?: HLSubBuilderWire[];
   private readonly _minOrderNotional: number;
 
   constructor(
@@ -217,8 +264,15 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
   ) {
     this.builderAddress = config?.builderAddress;
     this.builderFee = config?.builderFee;
+    this.subBuilders = toWireSubBuilders(config?.subBuilders);
+    if (this.subBuilders && !this.builderAddress) {
+      throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
+    }
     this._minOrderNotional = config?.minOrderNotional ?? MIN_NOTIONAL;
-    if (!Number.isFinite(this._minOrderNotional) || this._minOrderNotional < MIN_NOTIONAL) {
+    if (
+      !Number.isFinite(this._minOrderNotional) ||
+      this._minOrderNotional < MIN_NOTIONAL
+    ) {
       throw new Error(
         `minOrderNotional (${this._minOrderNotional}) must be a finite number >= the protocol MIN_NOTIONAL (${MIN_NOTIONAL})`,
       );
@@ -294,6 +348,40 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
     };
   }
 
+  /**
+   * Fill Hyperliquid's single action-level `builder`. Omitted fields use
+   * the adapter config. An explicit `subBuilders` array, including `[]`,
+   * is sent as given. The same builder address, ignoring case, still uses
+   * the adapter `s`. A different address with no `subBuilders` omits `s`.
+   * Throws on invalid sub-builders.
+   * Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
+   */
+  private resolveOrderBuilder(
+    params: PredictionOrderParams,
+  ): HLBuilderWire | undefined {
+    const address = params.builderAddress ?? this.builderAddress;
+    const keepsAdapterBuilder =
+      address !== undefined &&
+      this.builderAddress !== undefined &&
+      address.toLowerCase() === this.builderAddress.toLowerCase();
+    let subBuilders: HLSubBuilderWire[] | undefined;
+    if (params.subBuilders !== undefined) {
+      subBuilders = toWireSubBuilders(params.subBuilders);
+    } else if (keepsAdapterBuilder) {
+      subBuilders = this.subBuilders;
+    }
+
+    if (!address) {
+      if (subBuilders) throw new Error(SUB_BUILDERS_REQUIRE_BUILDER);
+      return undefined;
+    }
+    return toBuilderWire(
+      address,
+      params.builderFee ?? this.builderFee,
+      subBuilders,
+    );
+  }
+
   async placeOrder(
     params: PredictionOrderParams,
   ): Promise<PredictionOrderResult> {
@@ -310,22 +398,22 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       return { success: false, error: wireResult.error };
     }
 
-    const action: HLOrderAction & { builder?: { b: string; f: number } } = {
+    let builder: HLBuilderWire | undefined;
+    try {
+      builder = this.resolveOrderBuilder(params);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Invalid builder params";
+      return { success: false, error: message };
+    }
+
+    const action: HLOrderAction & { builder?: HLBuilderWire } = {
       type: "order",
       orders: [wireResult.wire],
       grouping: "na",
     };
-
-    // Use per-order builder params if provided, otherwise fall back to adapter-level config
-    const effectiveBuilderAddress =
-      params.builderAddress ?? this.builderAddress;
-    const effectiveBuilderFee = params.builderFee ?? this.builderFee;
-
-    if (effectiveBuilderAddress) {
-      action.builder = {
-        b: effectiveBuilderAddress.toLowerCase(),
-        f: effectiveBuilderFee ?? 0,
-      };
+    if (builder) {
+      action.builder = builder;
     }
 
     const sortedAction = sortOrderAction(action);
@@ -387,36 +475,66 @@ export class HIP4TradingAdapter implements PredictionTradingAdapter {
       };
     }
 
-    // Build wires, tracking which input indices have pre-validation errors
+    // Hyperliquid puts one `builder` on the order action, not on each order.
+    // A wire failure stays on that entry. An invalid builder, or orders that
+    // do not resolve to the same builder, is not signed.
+    // Ref: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order
     const results: PredictionOrderResult[] = new Array(params.length);
     const validWires: HLOrderWire[] = [];
     const wireToInputIndex: number[] = [];
+    const resolvedBuilders: (HLBuilderWire | undefined)[] = [];
+    let builderError = false;
 
     for (let i = 0; i < params.length; i++) {
       const wireResult = this.buildOrderWire(params[i]);
       if ("error" in wireResult) {
         results[i] = { success: false, error: wireResult.error };
-      } else {
-        wireToInputIndex.push(i);
-        validWires.push(wireResult.wire);
+        continue;
       }
+
+      let builder: HLBuilderWire | undefined;
+      try {
+        builder = this.resolveOrderBuilder(params[i]);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Invalid builder params";
+        results[i] = { success: false, error: message };
+        builderError = true;
+        continue;
+      }
+
+      wireToInputIndex.push(i);
+      validWires.push(wireResult.wire);
+      resolvedBuilders.push(builder);
     }
 
-    if (validWires.length === 0) {
+    if (builderError || validWires.length === 0) {
+      if (builderError) {
+        for (const idx of wireToInputIndex) {
+          results[idx] = { success: false, error: BATCH_NOT_SUBMITTED };
+        }
+      }
       return { success: false, results };
     }
 
-    const action: HLOrderAction & { builder?: { b: string; f: number } } = {
+    const builder = resolvedBuilders[0];
+    if (
+      resolvedBuilders.some((candidate) => !sameBuilder(candidate, builder))
+    ) {
+      for (const idx of wireToInputIndex) {
+        results[idx] = { success: false, error: BATCH_BUILDER_MISMATCH };
+      }
+      return { success: false, results };
+    }
+
+    const action: HLOrderAction & { builder?: HLBuilderWire } = {
       type: "order",
       orders: validWires,
       grouping: "na",
     };
 
-    if (this.builderAddress) {
-      action.builder = {
-        b: this.builderAddress.toLowerCase(),
-        f: this.builderFee ?? 0,
-      };
+    if (builder) {
+      action.builder = builder;
     }
 
     const sortedAction = sortOrderAction(action);

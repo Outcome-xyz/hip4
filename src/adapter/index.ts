@@ -49,6 +49,10 @@ export {
   roundToTick,
   stripZeros,
 } from "./hyperliquid/pricing";
+export {
+  MAX_SUB_BUILDERS,
+  SUB_BUILDER_SHARE_TOTAL,
+} from "./hyperliquid/sub-builders";
 export type {
   MergeOutcomeParams,
   MergeQuestionParams,

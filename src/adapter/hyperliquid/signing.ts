@@ -15,6 +15,7 @@
 import type {
   HIP4Signer,
   HLBatchModifyAction,
+  HLBuilderWire,
   HLCancelAction,
   HLModifyAction,
   HLOrderAction,
@@ -423,11 +424,12 @@ function formatDecimal(numStr: string): string {
 /**
  * Sort an order action into canonical key order for MessagePack encoding.
  * Key order: type, orders, grouping, builder?
+ * Builder key order: b, f, s?; sub-builder key order: b, s
  * Order wire key order: a, b, p, s, r, t, c?
  * Trigger type key order: isMarket, triggerPx, tpsl
  */
 export function sortOrderAction(
-  action: HLOrderAction & { builder?: { b: string; f: number } },
+  action: HLOrderAction & { builder?: HLBuilderWire },
 ): HLOrderAction {
   const sortedOrders = action.orders.map((o) => {
     // Sort the 't' field if it's a trigger type
@@ -466,10 +468,17 @@ export function sortOrderAction(
 
   // Include builder only if present, with canonical key order and lowercased address
   if (action.builder !== undefined) {
-    sorted.builder = {
+    const builder: HLBuilderWire = {
       b: action.builder.b.toLowerCase(),
       f: action.builder.f,
     };
+    if (action.builder.s !== undefined) {
+      builder.s = action.builder.s.map((sub) => ({
+        b: sub.b.toLowerCase(),
+        s: sub.s,
+      }));
+    }
+    sorted.builder = builder;
   }
 
   return sorted as unknown as HLOrderAction;

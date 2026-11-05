@@ -173,6 +173,9 @@ const hip4 = createHIP4Adapter({
   // Builder fee - collected on every order placed by this adapter
   builderAddress: "0xYourBuilderAddress",
   builderFee: 100, // 0.1% (tenths of a basis point, 0-1000)
+  // Optional: split the builder fee with up to 5 sub-builders. Each takes
+  // exactly one of share (0.001% units, 25000 = 25%) or sharePercent.
+  subBuilders: [{ address: "0xSubBuilderAddress", sharePercent: 25 }],
   // Client-side order-notional floor in USD, checked before submission. Must
   // be >= the protocol MIN_NOTIONAL; defaults to MIN_NOTIONAL if omitted.
   minOrderNotional: 10,
@@ -180,7 +183,8 @@ const hip4 = createHIP4Adapter({
 });
 ```
 
-Per-order builder address/fee can also be passed on `placeOrder` to override the adapter-level config.
+Per-order builder address, fee, and sub-builders can be passed on `placeOrder` and `placeOrders`. Omitted fields use the adapter config. Repeating the adapter builder address, in any case, still uses its sub-builders. A different address with no `subBuilders` sends no `s`. An explicit `subBuilders` list, including `[]`, is sent as given.
+`placeOrders` signs one builder for the whole action. An invalid builder, or orders that resolve to different builders, submits nothing.
 
 `minOrderNotional` can only raise the effective floor above the protocol minimum, never lower it - the
 constructor throws if you pass a value below `MIN_NOTIONAL`. Pass `skipMinNotionalCheck: true` on an
