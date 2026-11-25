@@ -3,6 +3,7 @@
 export type {
   CreateHIP4AdapterConfig,
   HIP4ClientConfig,
+  HIP4ConnectionEvent,
   HIP4Signer,
   HLCancelResponse,
   HLCancelStatus,

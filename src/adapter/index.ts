@@ -7,7 +7,10 @@ export {
   submitAgentApproval,
   submitBuilderFeeApproval,
 } from "./hyperliquid/agent-wallet";
-export type { HIP4ClientConfig } from "./hyperliquid/client";
+export type {
+  HIP4ClientConfig,
+  HIP4ConnectionEvent,
+} from "./hyperliquid/client";
 export {
   ALL_DEXS,
   HIP4Client,

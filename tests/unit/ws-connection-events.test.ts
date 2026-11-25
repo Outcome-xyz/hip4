@@ -1,0 +1,152 @@
+// ---------------------------------------------------------------------------
+// WebSocket connection events (OUT-7).
+//
+// A real HIP4Client runs on a global MockWebSocket, so subscribe / reconnect /
+// teardown all go through production code. The mock can drop with a code.
+// ---------------------------------------------------------------------------
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { HIP4ConnectionEvent } from "../../src/adapter/hyperliquid/client";
+import { HIP4Client } from "../../src/adapter/hyperliquid/client";
+
+interface MockWs {
+  readyState: number;
+  onopen: (() => void) | null;
+  onmessage: ((event: { data: string }) => void) | null;
+  onclose: ((event: { code: number }) => void) | null;
+  send: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+  open: () => void;
+  drop: (code?: number) => void;
+}
+
+const sockets: MockWs[] = [];
+const latest = () => sockets[sockets.length - 1];
+
+function MockWebSocket(this: MockWs) {
+  this.readyState = 0; // CONNECTING
+  this.onopen = null;
+  this.onmessage = null;
+  this.onclose = null;
+  this.send = vi.fn();
+  this.close = vi.fn(() => {
+    this.readyState = 3;
+  });
+  this.open = () => {
+    this.readyState = 1;
+    this.onopen?.();
+  };
+  this.drop = (code = 1006) => {
+    this.readyState = 3;
+    this.onclose?.({ code });
+  };
+  sockets.push(this);
+}
+Object.assign(MockWebSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 });
+
+describe("WS connection events (OUT-7)", () => {
+  let events: HIP4ConnectionEvent[];
+
+  const createClient = (
+    onConnectionEvent: (e: HIP4ConnectionEvent) => void = (e) => events.push(e),
+  ) => new HIP4Client({ testnet: true, onConnectionEvent });
+
+  beforeEach(() => {
+    sockets.length = 0;
+    events = [];
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", MockWebSocket);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("emits `closed` with the close code when the socket drops, and still reconnects", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop(1006);
+
+    expect(events).toEqual([{ reason: "closed", code: 1006, attempts: 0 }]);
+    vi.advanceTimersByTime(1000);
+    expect(sockets).toHaveLength(2);
+  });
+
+  it("counts attempts from the last healthy open", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop(); // attempts 0
+    vi.advanceTimersByTime(1000);
+    latest().drop(); // attempts 1: never reopened
+    vi.advanceTimersByTime(2000);
+    latest().open(); // healthy again
+    latest().drop(); // attempts 0: a new outage
+
+    expect(events.map((e) => e.attempts)).toEqual([0, 1, 0]);
+  });
+
+  it("does not emit when the consumer tears the socket down with closeWs()", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    const ws = latest();
+
+    client.closeWs();
+    ws.drop(1000); // the browser's async close after our own close()
+
+    expect(events).toEqual([]);
+  });
+
+  // Node's WebSocket (and possibly others) fires onclose synchronously inside
+  // close() on a CONNECTING socket. Caught by a live run, not by the mock.
+  it("does not emit or reconnect when close() fires onclose synchronously", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    const ws = latest();
+    ws.close.mockImplementation(() => ws.drop(1006));
+
+    client.closeWs();
+    vi.advanceTimersByTime(60_000);
+
+    expect(events).toEqual([]);
+    expect(sockets).toHaveLength(1);
+  });
+
+  it("does not emit when the last subscriber leaves", () => {
+    const client = createClient();
+    const unsubscribe = client.subscribe({ type: "allMids" }, vi.fn());
+    const ws = latest();
+
+    unsubscribe();
+    ws.drop(1000);
+
+    expect(events).toEqual([]);
+  });
+
+  it("emits `max_reconnect` once when it gives up", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    for (let i = 0; i < 11; i++) {
+      latest().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+
+    const gaveUp = events.filter((e) => e.reason === "max_reconnect");
+    expect(gaveUp).toEqual([{ reason: "max_reconnect", attempts: 10 }]);
+    expect(events.filter((e) => e.reason === "closed")).toHaveLength(11);
+  });
+
+  it("keeps reconnecting when the consumer's callback throws", () => {
+    const client = createClient(() => {
+      throw new Error("consumer blew up");
+    });
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    expect(() => latest().drop()).not.toThrow();
+    vi.advanceTimersByTime(1000);
+    expect(sockets).toHaveLength(2);
+  });
+});

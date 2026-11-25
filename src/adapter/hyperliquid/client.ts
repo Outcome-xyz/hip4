@@ -63,6 +63,25 @@ const MAINNET_WS_URL = "wss://api.hyperliquid.xyz/ws";
 // Config
 // ---------------------------------------------------------------------------
 
+/**
+ * A WebSocket failure the consumer can't otherwise see: the live feed just
+ * goes quiet. Emitted raw, once per transition; grouping them into outages is
+ * the consumer's call (`attempts === 0` marks the first drop of one).
+ */
+export interface HIP4ConnectionEvent {
+  /**
+   * - `closed`: the socket dropped while subscriptions were live. Never sent
+   *   for a consumer teardown (`closeWs()` / last unsubscribe). A browser
+   *   `error` always ends in a close, so it arrives here as code 1006.
+   * - `max_reconnect`: the reconnect budget ran out; the client stops retrying.
+   */
+  reason: "closed" | "max_reconnect";
+  /** WebSocket close code (`closed` only). */
+  code?: number;
+  /** Reconnect attempts made so far; resets to 0 on every successful open. */
+  attempts: number;
+}
+
 export interface HIP4ClientConfig {
   testnet?: boolean;
   infoUrl?: string;
@@ -73,6 +92,11 @@ export interface HIP4ClientConfig {
     msg: string,
     data?: unknown,
   ) => void;
+  /**
+   * Called on a WebSocket failure (see `HIP4ConnectionEvent`). Default: no-op.
+   * A throwing callback is swallowed so it can't break reconnects.
+   */
+  onConnectionEvent?: (event: HIP4ConnectionEvent) => void;
 }
 
 /**
@@ -209,6 +233,17 @@ export class HIP4Client {
       (this.testnet ? TESTNET_EXCHANGE_URL : MAINNET_EXCHANGE_URL);
     this.wsUrl = this.testnet ? TESTNET_WS_URL : MAINNET_WS_URL;
     this.log = config.logger ?? (() => {});
+    this.onConnectionEvent = config.onConnectionEvent;
+  }
+
+  private readonly onConnectionEvent?: (event: HIP4ConnectionEvent) => void;
+
+  private emitConnectionEvent(event: HIP4ConnectionEvent): void {
+    try {
+      this.onConnectionEvent?.(event);
+    } catch {
+      // Observability is best-effort; the socket lifecycle must go on.
+    }
   }
 
   // -- Info endpoints -------------------------------------------------------
@@ -613,8 +648,11 @@ export class HIP4Client {
 
       // Close WS if nothing left
       if (this.wsCallbacks.size === 0 && this.ws) {
-        this.ws.close();
+        // Detach before close(): some runtimes fire onclose synchronously
+        // inside close(), and it must see a teardown, not a drop.
+        const ws = this.ws;
         this.ws = null;
+        ws.close();
       }
     };
   }
@@ -626,14 +664,16 @@ export class HIP4Client {
       this.wsReconnectTimer = null;
     }
     this.wsReconnectAttempts = 0;
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    // Detach everything before close(): some runtimes fire onclose
+    // synchronously inside close(), and it must see a teardown, not a drop
+    // (no failure event, no reconnect).
+    const ws = this.ws;
+    this.ws = null;
     this.wsCallbacks.clear();
     this.wsActiveSubs.clear();
     this.wsSubRefCounts.clear();
     this.wsPendingMessages = [];
+    ws?.close();
   }
 
   /** Queue a message for the next open, skipping one that is already queued. */
@@ -671,10 +711,21 @@ export class HIP4Client {
         // Ignore unparseable frames
       }
     };
-    ws.onclose = () => {
+    // No onerror on purpose: our own close() of a CONNECTING socket fires
+    // `error` too (a false failure), and a real error always ends in onclose.
+    // `event` is optional: browsers always pass one, but consumers' test
+    // fakes (including ours) call onclose() bare, and must not throw here.
+    ws.onclose = (event?: { code?: number }) => {
+      // Teardowns (closeWs, last unsubscribe) null `this.ws` first, so only a
+      // drop underneath live subscriptions gets past these two checks.
       if (this.ws === ws) {
         this.ws = null;
         if (this.wsActiveSubs.size > 0) {
+          this.emitConnectionEvent({
+            reason: "closed",
+            code: event?.code,
+            attempts: this.wsReconnectAttempts,
+          });
           this.scheduleReconnect();
         }
       }
@@ -689,6 +740,10 @@ export class HIP4Client {
     if (this.wsDestroyed) return;
     if (this.wsReconnectAttempts >= 10) {
       this.log("warn", "WS max reconnect attempts reached");
+      this.emitConnectionEvent({
+        reason: "max_reconnect",
+        attempts: this.wsReconnectAttempts,
+      });
       return;
     }
     const delay = Math.min(1000 * 2 ** this.wsReconnectAttempts, 30_000);

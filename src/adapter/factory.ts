@@ -1,5 +1,6 @@
 import type { SubBuilder } from "../types/trading";
 import { HyperliquidHip4Adapter } from "./hyperliquid";
+import type { HIP4ConnectionEvent } from "./hyperliquid/client";
 
 /** Configuration for creating a HIP-4 prediction market adapter. */
 export interface CreateHIP4AdapterConfig {
@@ -34,6 +35,8 @@ export interface CreateHIP4AdapterConfig {
 		msg: string,
 		data?: unknown,
 	) => void;
+	/** Called on a WebSocket failure of this adapter's client. Default: no-op. */
+	onConnectionEvent?: (event: HIP4ConnectionEvent) => void;
 }
 
 /** Create a PredictionsAdapter backed by Hyperliquid HIP-4 spot markets. */
