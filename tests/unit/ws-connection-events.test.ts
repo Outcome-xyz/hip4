@@ -139,6 +139,40 @@ describe("WS connection events (OUT-7)", () => {
     expect(events.filter((e) => e.reason === "closed")).toHaveLength(11);
   });
 
+  it("treats a subscribe after giving up as a new outage, not another give-up", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    for (let i = 0; i < 11; i++) {
+      latest().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+    events = [];
+
+    client.subscribe({ type: "l2Book", coin: "A" }, vi.fn());
+    latest().drop();
+
+    expect(events).toEqual([{ reason: "closed", code: 1006, attempts: 0 }]);
+    const before = sockets.length;
+    vi.advanceTimersByTime(1000);
+    expect(sockets).toHaveLength(before + 1); // retrying again, full budget
+  });
+
+  it("reports the first drop after everyone unsubscribed mid-backoff", () => {
+    const client = createClient();
+    const unsubscribe = client.subscribe({ type: "allMids" }, vi.fn());
+    latest().drop();
+    vi.advanceTimersByTime(1000);
+    latest().drop(); // attempts 2, retry pending
+    unsubscribe();
+    vi.advanceTimersByTime(60_000);
+    events = [];
+
+    client.subscribe({ type: "allMids" }, vi.fn());
+    latest().drop();
+
+    expect(events).toEqual([{ reason: "closed", code: 1006, attempts: 0 }]);
+  });
+
   it("keeps reconnecting when the consumer's callback throws", () => {
     const client = createClient(() => {
       throw new Error("consumer blew up");

@@ -16,3 +16,9 @@ Also fixes teardown ordering: `closeWs()` and the last-unsubscribe path now
 detach the socket before calling `close()`. Runtimes that fire `onclose`
 synchronously inside `close()` (e.g. Node's WebSocket) previously saw a
 teardown as a drop and armed a stray reconnect timer.
+
+A `subscribe()` that has to open a socket while no reconnect is pending (after
+giving up, or after every subscriber left mid-backoff) now starts with a fresh
+reconnect budget instead of the stale count, so it retries with full backoff
+again and reports its first drop as `attempts: 0` rather than repeating
+`max_reconnect`.

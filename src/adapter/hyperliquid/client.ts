@@ -591,6 +591,10 @@ export class HIP4Client {
     options?: { responseChannel?: string },
   ): () => void {
     const responseChannel = options?.responseChannel ?? subscription.type;
+    // A consumer-opened socket (no live one, no retry pending: after giving
+    // up, or after everyone unsubscribed mid-backoff) starts a new outage
+    // count with a full retry budget, not a stale one.
+    if (!this.ws && !this.wsReconnectTimer) this.wsReconnectAttempts = 0;
     this.ensureWs();
 
     // Send subscribe to HL only for the first subscriber of this payload --
@@ -749,6 +753,7 @@ export class HIP4Client {
     const delay = Math.min(1000 * 2 ** this.wsReconnectAttempts, 30_000);
     this.wsReconnectAttempts++;
     this.wsReconnectTimer = setTimeout(() => {
+      this.wsReconnectTimer = null;
       if (this.wsDestroyed || this.wsActiveSubs.size === 0) return;
       this.ensureWs();
       for (const msg of this.wsActiveSubs) {
