@@ -74,6 +74,9 @@ export interface HIP4ConnectionEvent {
    *   for a consumer teardown (`closeWs()` / last unsubscribe). A browser
    *   `error` always ends in a close, so it arrives here as code 1006.
    * - `max_reconnect`: the reconnect budget ran out; the client stops retrying.
+   *   It follows that last `closed` (attempts 10) in the same tick, so count
+   *   one or the other per give-up, not both. A later `subscribe()` that
+   *   opens a socket starts a fresh budget (attempts 0 again).
    */
   reason: "closed" | "max_reconnect";
   /** WebSocket close code (`closed` only). */
@@ -94,7 +97,8 @@ export interface HIP4ClientConfig {
   ) => void;
   /**
    * Called on a WebSocket failure (see `HIP4ConnectionEvent`). Default: no-op.
-   * A throwing callback is swallowed so it can't break reconnects.
+   * Runs synchronously inside the socket's close handler; a throwing
+   * callback (or a rejected promise) is swallowed so it can't break reconnects.
    */
   onConnectionEvent?: (event: HIP4ConnectionEvent) => void;
 }
@@ -240,7 +244,10 @@ export class HIP4Client {
 
   private emitConnectionEvent(event: HIP4ConnectionEvent): void {
     try {
-      this.onConnectionEvent?.(event);
+      // Typed sync, but an async callback is assignable: swallow its
+      // rejection too instead of surfacing an unhandled rejection.
+      const result: unknown = this.onConnectionEvent?.(event);
+      if (result instanceof Promise) result.catch(() => {});
     } catch {
       // Observability is best-effort; the socket lifecycle must go on.
     }
@@ -725,12 +732,18 @@ export class HIP4Client {
       if (this.ws === ws) {
         this.ws = null;
         if (this.wsActiveSubs.size > 0) {
+          // Schedule before emitting, so a callback that tears down
+          // (closeWs) also clears the retry it would otherwise leave armed.
+          const attempts = this.wsReconnectAttempts;
+          const retrying = this.scheduleReconnect();
           this.emitConnectionEvent({
             reason: "closed",
             code: event?.code,
-            attempts: this.wsReconnectAttempts,
+            attempts,
           });
-          this.scheduleReconnect();
+          if (!retrying) {
+            this.emitConnectionEvent({ reason: "max_reconnect", attempts });
+          }
         }
       }
     };
@@ -740,15 +753,12 @@ export class HIP4Client {
   private wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private wsDestroyed = false;
 
-  private scheduleReconnect(): void {
-    if (this.wsDestroyed) return;
+  /** Arms the next retry; `false` once the retry budget is spent. */
+  private scheduleReconnect(): boolean {
+    if (this.wsDestroyed) return true;
     if (this.wsReconnectAttempts >= 10) {
       this.log("warn", "WS max reconnect attempts reached");
-      this.emitConnectionEvent({
-        reason: "max_reconnect",
-        attempts: this.wsReconnectAttempts,
-      });
-      return;
+      return false;
     }
     const delay = Math.min(1000 * 2 ** this.wsReconnectAttempts, 30_000);
     this.wsReconnectAttempts++;
@@ -764,6 +774,7 @@ export class HIP4Client {
         }
       }
     }, delay);
+    return true;
   }
 
   // -- Internal -------------------------------------------------------------

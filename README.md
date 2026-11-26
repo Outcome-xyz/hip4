@@ -180,6 +180,12 @@ const hip4 = createHIP4Adapter({
   // be >= the protocol MIN_NOTIONAL; defaults to MIN_NOTIONAL if omitted.
   minOrderNotional: 10,
   logger: (level, msg, data) => console.log(level, msg, data),
+  // Optional: hear about WebSocket failures the feed would otherwise hide.
+  // `closed` = dropped under live subscriptions (with `code`); `max_reconnect`
+  // = gave up after 10 retries (it follows the last `closed`, so count one).
+  // `attempts` is 0 on the first drop of an outage. Sync; errors are swallowed.
+  onConnectionEvent: ({ reason, code, attempts }) =>
+    console.warn("hip4 ws", reason, code, attempts),
 });
 ```
 

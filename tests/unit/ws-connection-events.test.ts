@@ -7,6 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HIP4ConnectionEvent } from "../../src/adapter/hyperliquid/client";
+import { createHIP4Adapter } from "../../src/adapter/factory";
 import { HIP4Client } from "../../src/adapter/hyperliquid/client";
 
 interface MockWs {
@@ -182,5 +183,76 @@ describe("WS connection events (OUT-7)", () => {
     expect(() => latest().drop()).not.toThrow();
     vi.advanceTimersByTime(1000);
     expect(sockets).toHaveLength(2);
+  });
+
+  it("ends a give-up with the last `closed` and then `max_reconnect`", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    for (let i = 0; i < 11; i++) {
+      latest().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+
+    expect(events.slice(-2)).toEqual([
+      { reason: "closed", code: 1006, attempts: 10 },
+      { reason: "max_reconnect", attempts: 10 },
+    ]);
+  });
+
+  it("reports `code: undefined` when onclose gets no event", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    (latest().onclose as unknown as () => void)();
+
+    expect(events).toEqual([
+      { reason: "closed", code: undefined, attempts: 0 },
+    ]);
+  });
+
+  it("does not reconnect after closeWs() during a pending backoff", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    latest().drop();
+
+    client.closeWs();
+    vi.advanceTimersByTime(60_000);
+
+    expect(sockets).toHaveLength(1);
+    expect(events).toHaveLength(1);
+  });
+
+  it("leaves no retry armed when the callback itself calls closeWs()", () => {
+    const client: HIP4Client = createClient(() => client.closeWs());
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("swallows a rejected async callback and keeps reconnecting", async () => {
+    const client = createClient(async () => {
+      throw new Error("async consumer blew up");
+    });
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop();
+    await Promise.resolve();
+    vi.advanceTimersByTime(1000);
+
+    expect(sockets).toHaveLength(2);
+  });
+
+  it("passes onConnectionEvent through createHIP4Adapter", () => {
+    const adapter = createHIP4Adapter({
+      testnet: true,
+      onConnectionEvent: (e) => events.push(e),
+    });
+    adapter.client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop(1006);
+
+    expect(events).toEqual([{ reason: "closed", code: 1006, attempts: 0 }]);
   });
 });
