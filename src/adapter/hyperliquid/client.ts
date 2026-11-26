@@ -246,8 +246,10 @@ export class HIP4Client {
     try {
       // Typed sync, but an async callback is assignable: swallow its
       // rejection too instead of surfacing an unhandled rejection.
-      const result: unknown = this.onConnectionEvent?.(event);
-      if (result instanceof Promise) result.catch(() => {});
+      const result = this.onConnectionEvent?.(event) as
+        | PromiseLike<unknown>
+        | undefined;
+      if (typeof result?.then === "function") result.then(undefined, () => {});
     } catch {
       // Observability is best-effort; the socket lifecycle must go on.
     }
@@ -598,22 +600,29 @@ export class HIP4Client {
     options?: { responseChannel?: string },
   ): () => void {
     const responseChannel = options?.responseChannel ?? subscription.type;
-    // A consumer-opened socket (no live one, no retry pending: after giving
-    // up, or after everyone unsubscribed mid-backoff) starts a new outage
-    // count with a full retry budget, not a stale one.
-    if (!this.ws && !this.wsReconnectTimer) this.wsReconnectAttempts = 0;
+    const opening = !this.ws;
+    if (opening) {
+      if (this.wsReconnectTimer) {
+        // Mid-backoff: this socket is the retry, so it takes over the timer's
+        // job (and its attempt count) instead of racing it.
+        clearTimeout(this.wsReconnectTimer);
+        this.wsReconnectTimer = null;
+      } else {
+        // No retry pending (first connect, or after giving up): a new outage
+        // count with a full retry budget, not a stale one.
+        this.wsReconnectAttempts = 0;
+      }
+    }
     this.ensureWs();
+    // Restore subscriptions still live from the dropped socket.
+    if (opening) for (const msg of this.wsActiveSubs) this.sendOrQueue(msg);
 
     // Send subscribe to HL only for the first subscriber of this payload --
     // duplicates just bump the refcount and share the wire subscription.
     const subMsg = JSON.stringify({ method: "subscribe", subscription });
     const refs = this.wsSubRefCounts.get(subMsg) ?? 0;
     if (refs === 0) {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(subMsg);
-      } else {
-        this.queueWsMessage(subMsg);
-      }
+      this.sendOrQueue(subMsg);
       this.wsActiveSubs.add(subMsg);
     }
     this.wsSubRefCounts.set(subMsg, refs + 1);
@@ -657,13 +666,20 @@ export class HIP4Client {
         if (cbs.size === 0) this.wsCallbacks.delete(responseChannel);
       }
 
-      // Close WS if nothing left
-      if (this.wsCallbacks.size === 0 && this.ws) {
-        // Detach before close(): some runtimes fire onclose synchronously
-        // inside close(), and it must see a teardown, not a drop.
-        const ws = this.ws;
-        this.ws = null;
-        ws.close();
+      // Close WS if nothing left, including a retry pending mid-backoff.
+      if (this.wsCallbacks.size === 0) {
+        if (this.wsReconnectTimer) {
+          clearTimeout(this.wsReconnectTimer);
+          this.wsReconnectTimer = null;
+        }
+        this.wsReconnectAttempts = 0;
+        if (this.ws) {
+          // Detach before close(): some runtimes fire onclose synchronously
+          // inside close(), and it must see a teardown, not a drop.
+          const ws = this.ws;
+          this.ws = null;
+          ws.close();
+        }
       }
     };
   }
@@ -685,6 +701,13 @@ export class HIP4Client {
     this.wsSubRefCounts.clear();
     this.wsPendingMessages = [];
     ws?.close();
+  }
+
+  /** Send now if the socket is open, else queue it for the next open. */
+  private sendOrQueue(msg: string): void {
+    const ws = this.ws;
+    if (ws?.readyState === WebSocket.OPEN) ws.send(msg);
+    else this.queueWsMessage(msg);
   }
 
   /** Queue a message for the next open, skipping one that is already queued. */
@@ -741,7 +764,8 @@ export class HIP4Client {
             code: event?.code,
             attempts,
           });
-          if (!retrying) {
+          // Unless the callback already reconnected (subscribe) or tore down.
+          if (!retrying && !this.ws && this.wsActiveSubs.size > 0) {
             this.emitConnectionEvent({ reason: "max_reconnect", attempts });
           }
         }
@@ -751,11 +775,9 @@ export class HIP4Client {
 
   private wsReconnectAttempts = 0;
   private wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private wsDestroyed = false;
 
   /** Arms the next retry; `false` once the retry budget is spent. */
   private scheduleReconnect(): boolean {
-    if (this.wsDestroyed) return true;
     if (this.wsReconnectAttempts >= 10) {
       this.log("warn", "WS max reconnect attempts reached");
       return false;
@@ -764,15 +786,10 @@ export class HIP4Client {
     this.wsReconnectAttempts++;
     this.wsReconnectTimer = setTimeout(() => {
       this.wsReconnectTimer = null;
-      if (this.wsDestroyed || this.wsActiveSubs.size === 0) return;
+      // A live socket here was opened by subscribe(), which restored the subs.
+      if (this.ws || this.wsActiveSubs.size === 0) return;
       this.ensureWs();
-      for (const msg of this.wsActiveSubs) {
-        if (this.ws?.readyState === WebSocket.OPEN) {
-          this.ws.send(msg);
-        } else {
-          this.queueWsMessage(msg);
-        }
-      }
+      for (const msg of this.wsActiveSubs) this.sendOrQueue(msg);
     }, delay);
     return true;
   }

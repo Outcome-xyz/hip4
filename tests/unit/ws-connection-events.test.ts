@@ -255,4 +255,73 @@ describe("WS connection events (OUT-7)", () => {
 
     expect(events).toEqual([{ reason: "closed", code: 1006, attempts: 0 }]);
   });
+  it("clears the pending retry when the last subscriber leaves mid-backoff", () => {
+    const client = createClient();
+    const unsubscribe = client.subscribe({ type: "allMids" }, vi.fn());
+    latest().drop();
+
+    unsubscribe();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not duplicate subscribes when subscribing mid-backoff", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    latest().drop(); // retry pending
+
+    client.subscribe({ type: "l2Book", coin: "A" }, vi.fn());
+    const ws = latest();
+    ws.open();
+    vi.advanceTimersByTime(60_000);
+
+    expect(sockets).toHaveLength(2); // the timer did not open a third
+    const subs = ws.send.mock.calls.map(
+      (c) => JSON.parse(c[0]).subscription.type,
+    );
+    expect(subs.sort()).toEqual(["allMids", "l2Book"]);
+  });
+
+  it("restores the old subscriptions on a subscribe after giving up", () => {
+    const client = createClient();
+    client.subscribe({ type: "allMids" }, vi.fn());
+    for (let i = 0; i < 11; i++) {
+      latest().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+
+    client.subscribe({ type: "l2Book", coin: "A" }, vi.fn());
+    latest().open();
+
+    const subs = latest().send.mock.calls.map(
+      (c) => JSON.parse(c[0]).subscription.type,
+    );
+    expect(subs.sort()).toEqual(["allMids", "l2Book"]);
+  });
+
+  it("skips `max_reconnect` when the callback already reconnected", () => {
+    const client: HIP4Client = createClient((e) => {
+      events.push(e);
+      if (e.reason === "closed" && e.attempts === 10) {
+        client.subscribe({ type: "l2Book", coin: "A" }, vi.fn());
+      }
+    });
+    client.subscribe({ type: "allMids" }, vi.fn());
+    for (let i = 0; i < 11; i++) {
+      latest().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+
+    expect(events.some((e) => e.reason === "max_reconnect")).toBe(false);
+  });
+
+  it("swallows a rejection from a non-Promise thenable", () => {
+    const then = vi.fn();
+    const client = createClient(() => ({ then }) as never);
+    client.subscribe({ type: "allMids" }, vi.fn());
+
+    latest().drop();
+
+    expect(then).toHaveBeenCalledWith(undefined, expect.any(Function));
+  });
 });

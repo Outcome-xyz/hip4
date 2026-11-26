@@ -25,3 +25,7 @@ giving up, or after every subscriber left mid-backoff) now starts with a fresh
 reconnect budget instead of the stale count, so it retries with full backoff
 again and reports its first drop as `attempts: 0` rather than repeating
 `max_reconnect`.
+
+The last unsubscribe now also cancels a pending retry and resets the count. A
+`subscribe()` during a backoff wait takes over that retry (restoring the live
+subscriptions once) instead of racing the timer, so nothing is subscribed twice.
