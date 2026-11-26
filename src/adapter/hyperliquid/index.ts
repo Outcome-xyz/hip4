@@ -41,6 +41,7 @@ export class HyperliquidHip4Adapter implements PredictionsAdapter {
       infoUrl: config.infoUrl,
       exchangeUrl: config.exchangeUrl,
       logger: config.logger,
+      onConnectionEvent: config.onConnectionEvent,
     });
 
     const auth = new HIP4Auth();
