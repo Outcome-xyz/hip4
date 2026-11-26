@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.4.0
+
+### Minor Changes
+
+- [#30](https://github.com/Outcome-xyz/hip4/pull/30) [`8216222`](https://github.com/Outcome-xyz/hip4/commit/8216222ba48ace0243f3a59e35cac2e1763f5520) Thanks [@outcome-eng](https://github.com/outcome-eng)! - Add an `onConnectionEvent` callback to `HIP4ClientConfig` / `CreateHIP4AdapterConfig`.
+  
+  A dropped WebSocket used to be invisible to consumers: the feed just went
+  quiet, and giving up after the reconnect budget was a single warn log. The
+  callback now receives a `HIP4ConnectionEvent`: `closed` (with the close `code`)
+  when the socket drops under live subscriptions — never for a consumer
+  `closeWs()` / last-unsubscribe teardown — and `max_reconnect` when the client
+  stops retrying (right after that last `closed`, so count one per give-up).
+  `attempts` resets to 0 on every successful open. The callback runs after the
+  next retry is armed, so calling `closeWs()` from it leaves nothing behind. Backward
+  compatible: the default is a no-op, and a throwing callback or rejected
+  promise is swallowed.
+  
+  Also fixes teardown ordering: `closeWs()` and the last-unsubscribe path now
+  detach the socket before calling `close()`. Runtimes that fire `onclose`
+  synchronously inside `close()` (e.g. Node's WebSocket) previously saw a
+  teardown as a drop and armed a stray reconnect timer.
+  
+  A `subscribe()` that has to open a socket while no reconnect is pending (after
+  giving up, or after every subscriber left mid-backoff) now starts with a fresh
+  reconnect budget instead of the stale count, so it retries with full backoff
+  again and reports its first drop as `attempts: 0` rather than repeating
+  `max_reconnect`.
+  
+  The last unsubscribe now also cancels a pending retry and resets the count. A
+  `subscribe()` during a backoff wait takes over that retry (restoring the live
+  subscriptions once) instead of racing the timer, so nothing is subscribed twice.
+
+- [#26](https://github.com/Outcome-xyz/hip4/pull/26) [`94dd6f0`](https://github.com/Outcome-xyz/hip4/commit/94dd6f0a8afa7d84325be458e3ed33b83784290e) Thanks [@anubhavitis](https://github.com/anubhavitis)! - Orders can now split the builder fee with sub-builders. Pass `subBuilders` (up to 5) on the adapter config or per
+  order on `placeOrder` and `placeOrders`; each entry takes exactly one of `share` (raw units of 0.001% of the
+  builder fee) or `sharePercent`. Entries are validated before signing and require a builder address. A batch
+  signs one builder, so every order must resolve to the same one. Repeating the adapter builder address keeps
+  its sub-builders. A different address with no sub-builders does not. Without `subBuilders` the order action is
+  unchanged.
+
+### Patch Changes
+
+- [#28](https://github.com/Outcome-xyz/hip4/pull/28) [`a1ec8c2`](https://github.com/Outcome-xyz/hip4/commit/a1ec8c2209f46e848781bfd35bf587c74f21bba6) Thanks [@kolima](https://github.com/kolima)! - Pre-releases are published again, to the npm `beta` dist-tag: `npm install @outcome.xyz/hip4@beta`. `latest` keeps
+  the newest stable version, so a plain `npm install @outcome.xyz/hip4` is unchanged.
+
 ## 1.4.0-beta.0
 
 ### Minor Changes
